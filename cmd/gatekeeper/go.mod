@@ -2,31 +2,36 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-module github.com/trustbloc/ace
+module github.com/trustbloc/ace/cmd/gatekeeper
 
 go 1.17
 
+replace github.com/trustbloc/ace => ../..
+
 require (
-	github.com/cenkalti/backoff/v4 v4.1.2
+	github.com/gorilla/mux v1.8.0
 	github.com/hyperledger/aries-framework-go v0.1.8-0.20220308060532-714cd5c18552
-	github.com/hyperledger/aries-framework-go-ext/component/storage/couchdb v0.0.0-20220304143456-9d4457ff86a5
-	github.com/hyperledger/aries-framework-go-ext/component/storage/mongodb v0.0.0-20220304143456-9d4457ff86a5
-	github.com/hyperledger/aries-framework-go-ext/component/storage/mysql v0.0.0-20220304143456-9d4457ff86a5
-	github.com/hyperledger/aries-framework-go/component/storageutil v0.0.0-20220308060532-714cd5c18552
 	github.com/hyperledger/aries-framework-go/spi v0.0.0-20220308060532-714cd5c18552
+	github.com/rs/cors v1.8.2
 	github.com/spf13/cobra v1.3.0
 	github.com/stretchr/testify v1.7.0
+	github.com/trustbloc/ace v0.0.0-00010101000000-000000000000
 	github.com/trustbloc/edge-core v0.1.7
 )
 
 require (
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
+	github.com/cenkalti/backoff/v4 v4.1.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-kivik/couchdb/v3 v3.2.6 // indirect
 	github.com/go-kivik/kivik/v3 v3.2.3 // indirect
 	github.com/go-sql-driver/mysql v1.5.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/snappy v0.0.3 // indirect
+	github.com/hyperledger/aries-framework-go-ext/component/storage/couchdb v0.0.0-20220304143456-9d4457ff86a5 // indirect
+	github.com/hyperledger/aries-framework-go-ext/component/storage/mongodb v0.0.0-20220304143456-9d4457ff86a5 // indirect
+	github.com/hyperledger/aries-framework-go-ext/component/storage/mysql v0.0.0-20220304143456-9d4457ff86a5 // indirect
+	github.com/hyperledger/aries-framework-go/component/storageutil v0.0.0-20220308060532-714cd5c18552 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
