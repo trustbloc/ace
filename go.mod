@@ -16,7 +16,7 @@ require (
 	github.com/hyperledger/aries-framework-go/spi v0.0.0-20220308060532-714cd5c18552
 	github.com/spf13/cobra v1.3.0
 	github.com/stretchr/testify v1.7.0
-	github.com/trustbloc/edge-core v0.1.7
+	github.com/trustbloc/edge-core v0.1.8-0.20220308160458-17fbc683162d
 )
 
 require (

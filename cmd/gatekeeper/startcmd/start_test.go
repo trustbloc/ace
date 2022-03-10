@@ -105,55 +105,6 @@ func TestNotSupportedDSN(t *testing.T) {
 	require.Contains(t, err.Error(), "unsupported storage driver: mem1")
 }
 
-func TestFailedToConnectToDB(t *testing.T) {
-	t.Run("test couchdb", func(t *testing.T) {
-		startCmd := GetStartCmd(&mockServer{})
-
-		args := []string{
-			"--" + hostURLFlagName, "localhost:8080",
-			"--" + common.DatabaseURLFlagName, "couchdb://url",
-			"--" + common.DatabasePrefixFlagName, "test_",
-			"--" + vaultURLFlagName, "localhost:8081",
-		}
-		startCmd.SetArgs(args)
-
-		err := startCmd.Execute()
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to init aries storage provider")
-	})
-
-	t.Run("test mysql", func(t *testing.T) {
-		startCmd := GetStartCmd(&mockServer{})
-
-		args := []string{
-			"--" + hostURLFlagName, "localhost:8080",
-			"--" + common.DatabaseURLFlagName, "mysql://url",
-			"--" + common.DatabasePrefixFlagName, "test_",
-			"--" + vaultURLFlagName, "localhost:8081",
-		}
-		startCmd.SetArgs(args)
-
-		err := startCmd.Execute()
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "failed to init aries storage provider")
-	})
-
-	t.Run("test mongodb", func(t *testing.T) {
-		startCmd := GetStartCmd(&mockServer{})
-
-		args := []string{
-			"--" + hostURLFlagName, "localhost:8080",
-			"--" + common.DatabaseURLFlagName, "mongodb://",
-			"--" + common.DatabasePrefixFlagName, "test_",
-			"--" + vaultURLFlagName, "localhost:8081",
-		}
-		startCmd.SetArgs(args)
-
-		err := startCmd.Execute()
-		require.Error(t, err)
-	})
-}
-
 func TestStartCmdWithBlankEnvVar(t *testing.T) {
 	t.Run("test blank host env var", func(t *testing.T) {
 		startCmd := GetStartCmd(&mockServer{})
