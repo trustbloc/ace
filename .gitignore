@@ -6,4 +6,5 @@
 
 .idea/
 build/
-coverage.out
+coverage*.out
+test/bdd/fixtures/keys
