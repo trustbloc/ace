@@ -17,10 +17,91 @@ services:
       - DATABASE_TYPE=mongodb
       - DATABASE_URL=mongodb://mongodb.example.com:27017
       - DATABASE_PREFIX=gatekeeper_
-      - GK_VAULT_URL=https://TODO.vault.trustbloc.local
+      - GK_VAULT_URL=https://vault.trustbloc.local
       - LOG_LEVEL=debug
     ports:
       - "9014:9014"
+    volumes:
+      - ./keys/tls:/etc/tls
+    command: start
+    depends_on:
+      - mongodb.example.com
+    networks:
+      - bdd_net
+
+  vault.trustbloc.local:
+    container_name: vault.trustbloc.local
+    image: ${VAULT_SERVER_IMAGE}:${VAULT_SERVER_IMAGE_TAG}
+    environment:
+      - VAULT_HOST_URL=${VAULT_SERVER_HOST}:${VAULT_SERVER_PORT}
+      - VAULT_REMOTE_KMS_URL=https://vault.kms.example.com:${KMS_PORT}
+      - VAULT_EDV_URL=http://edv.trustbloc.local:8071/encrypted-data-vaults
+      - VAULT_TLS_SYSTEMCERTPOOL=true
+      - VAULT_TLS_CACERTS=/etc/tls/ec-cacert.pem
+      - VAULT_TLS_SERVE_CERT=/etc/tls/ec-pubCert.pem
+      - VAULT_TLS_SERVE_KEY=/etc/tls/ec-key.pem
+      - VAULT_DSN=mongodb://mongodb.example.com:27017
+      - VAULT_DID_DOMAIN=testnet.orb.local
+      - VAULT_DID_METHOD=orb
+      - VAULT_DID_ANCHOR_ORIGIN=https://testnet.orb.local
+      - VAULT_REQUEST_TOKENS=sidetreeToken=tk1
+    ports:
+      - ${VAULT_SERVER_PORT}:${VAULT_SERVER_PORT}
+    entrypoint: ""
+    command: /bin/sh -c "vault-server start"
+    volumes:
+      - ./keys/tls:/etc/tls
+    networks:
+      - bdd_net
+
+  kms.trustbloc.local:
+    container_name: kms.trustbloc.local
+    image: ${KMS_SERVER_IMAGE}:${KMS_SERVER_IMAGE_TAG}
+    environment:
+      - KMS_HOST=0.0.0.0:8074
+      - KMS_BASE_URL=https://kms.trustbloc.local:8076
+      - KMS_TLS_CACERTS=/etc/tls/ec-cacert.pem
+      - KMS_TLS_SERVE_CERT=/etc/tls/ec-pubCert.pem
+      - KMS_TLS_SERVE_KEY=/etc/tls/ec-key.pem
+      - KMS_DATABASE_TYPE=mongodb
+      - KMS_DATABASE_URL=mongodb://mongodb.example.com:27017
+      - KMS_DATABASE_PREFIX=kms_
+      - KMS_CACHE_ENABLE=true
+      - KMS_ZCAP_ENABLE=true
+      - KMS_LOG_LEVEL=debug
+      - KMS_SECRET_LOCK_TYPE=local
+      - KMS_SECRET_LOCK_KEY_PATH=/etc/tls/secret-lock.key
+    ports:
+      - "8074:8074"
+      - "48831:48831"
+    volumes:
+      - ./keys/tls:/etc/tls
+    command: start
+    depends_on:
+      - mongodb.example.com
+      - edv.trustbloc.local
+    networks:
+      - bdd_net
+
+  edv.trustbloc.local:
+    container_name: edv.trustbloc.local
+    image: ${EDV_REST_IMAGE}:${EDV_REST_IMAGE_TAG}
+    environment:
+      - EDV_HOST_URL=0.0.0.0:8081
+      - EDV_TLS_CERT_FILE=/etc/tls/ec-pubCert.pem
+      - EDV_TLS_KEY_FILE=/etc/tls/ec-key.pem
+      - EDV_DATABASE_TYPE=mongodb
+      - EDV_DATABASE_URL=mongodb://mongodb.example.com:27017
+      - EDV_DATABASE_PREFIX=edv_
+      - EDV_LOCALKMS_SECRETS_DATABASE_TYPE=mongodb
+      - EDV_LOCALKMS_SECRETS_DATABASE_URL=mongodb://mongodb.example.com:27017
+      - EDV_LOCALKMS_SECRETS_DATABASE_PREFIX=edv_kms_
+      - EDV_EXTENSIONS=ReturnFullDocumentsOnQuery,Batch
+      - EDV_DATABASE_TIMEOUT=60
+      - EDV_AUTH_ENABLE=true
+      - EDV_LOG_LEVEL=debug
+    ports:
+      - "8081:8081"
     volumes:
       - ./keys/tls:/etc/tls
     command: start
