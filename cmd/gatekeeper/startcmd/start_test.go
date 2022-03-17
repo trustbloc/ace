@@ -96,7 +96,9 @@ func TestNotSupportedDSN(t *testing.T) {
 		"--" + hostURLFlagName, "localhost:8080",
 		"--" + common.DatabaseURLFlagName, "mem1://test",
 		"--" + common.DatabasePrefixFlagName, "test_",
-		"--" + vaultURLFlagName, "localhost:8081",
+		"--" + didResolverURLFlagName, "https://did-resolver-url",
+		"--" + vaultServerURLFlagName, "https://vault-server-url",
+		"--" + vcIssuerURLFlagName, "https://vc-isssuer-url",
 	}
 	startCmd.SetArgs(args)
 
@@ -125,7 +127,9 @@ func TestStartCmdValidArgs(t *testing.T) {
 		"--" + hostURLFlagName, "localhost:8080",
 		"--" + common.DatabaseURLFlagName, "mem://test",
 		"--" + common.DatabasePrefixFlagName, "test_",
-		"--" + vaultURLFlagName, "https://localhost:8081",
+		"--" + didResolverURLFlagName, "https://did-resolver-url",
+		"--" + vaultServerURLFlagName, "https://vault-server-url",
+		"--" + vcIssuerURLFlagName, "https://vc-isssuer-url",
 	}
 	startCmd.SetArgs(args)
 

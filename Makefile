@@ -11,6 +11,13 @@ GATEKEEPER_IMAGE_NAME ?=trustbloc/gatekeeper
 ALPINE_VER ?= 3.14
 GO_VER     ?= 1.17
 
+GATE_KEEPER_PATH=cmd/gatekeeper
+
+# OpenAPI spec
+OPENAPI_DOCKER_IMG=quay.io/goswagger/swagger
+OPENAPI_SPEC_PATH=.build/rest/openapi/spec
+OPENAPI_DOCKER_IMG_VERSION=v0.26.0
+
 .PHONY: all
 all: clean checks unit-test bdd-test
 
@@ -56,3 +63,10 @@ gatekeeper-docker:
 clean:
 	@rm -rf ./build
 	@rm -rf coverage*.out
+
+.PHONY: generate-models-client-gatekeeper
+generate-models-client-gatekeeper:
+	@echo "Generating gatekeeper models and client"
+	@MODELS_PATH=pkg/restapi/gatekeeper/operation CLIENT_PATH=pkg/client/gatekeeper SPEC_LOC=${GATE_KEEPER_PATH}/openapi.yaml  \
+	DOCKER_IMAGE=$(OPENAPI_DOCKER_IMG) DOCKER_IMAGE_VERSION=$(OPENAPI_DOCKER_IMG_VERSION)  \
+	scripts/generate-models-client.sh
