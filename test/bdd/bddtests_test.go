@@ -20,6 +20,7 @@ import (
 	"github.com/hyperledger/aries-framework-go/pkg/common/log"
 	tlsutil "github.com/trustbloc/edge-core/pkg/utils/tls"
 
+	"github.com/trustbloc/ace/test/bdd/pkg/common"
 	"github.com/trustbloc/ace/test/bdd/pkg/gatekeeper"
 )
 
@@ -95,41 +96,44 @@ func initializeTestSuite(ctx *godog.TestSuiteContext) {
 		return
 	}
 
-	var (
-		dockerComposeUp   = []string{"docker-compose", "-f", composeFilePath, "up", "--force-recreate", "-d"}
-		dockerComposeDown = []string{"docker-compose", "-f", composeFilePath, "down"}
-	)
+	ctx.BeforeSuite(beforeSuiteHook)
+	ctx.AfterSuite(afterSuiteHook)
+}
 
-	ctx.BeforeSuite(func() {
-		logger.Infof("Running %s", strings.Join(dockerComposeUp, " "))
+func beforeSuiteHook() {
+	dockerComposeUp := []string{"docker-compose", "-f", composeFilePath, "up", "--force-recreate", "-d"}
 
-		cmd := exec.Command(dockerComposeUp[0], dockerComposeUp[1:]...) //nolint:gosec
-		if out, err := cmd.CombinedOutput(); err != nil {
-			logger.Fatalf("%s: %s", err.Error(), string(out))
+	logger.Infof("Running %s", strings.Join(dockerComposeUp, " "))
+
+	cmd := exec.Command(dockerComposeUp[0], dockerComposeUp[1:]...) //nolint:gosec
+	if out, err := cmd.CombinedOutput(); err != nil {
+		logger.Fatalf("%s: %s", err.Error(), string(out))
+	}
+
+	testSleep := 10
+
+	if os.Getenv("TEST_SLEEP") != "" {
+		s, err := strconv.Atoi(os.Getenv("TEST_SLEEP"))
+		if err != nil {
+			logger.Errorf("invalid 'TEST_SLEEP' value: %w", err)
+		} else {
+			testSleep = s
 		}
+	}
 
-		testSleep := 10
-		if os.Getenv("TEST_SLEEP") != "" {
-			s, err := strconv.Atoi(os.Getenv("TEST_SLEEP"))
-			if err != nil {
-				logger.Errorf("invalid 'TEST_SLEEP' value: %w", err)
-			} else {
-				testSleep = s
-			}
-		}
+	logger.Infof("*** testSleep=%d\n\n", testSleep)
+	time.Sleep(time.Second * time.Duration(testSleep))
+}
 
-		logger.Infof("*** testSleep=%d\n\n", testSleep)
-		time.Sleep(time.Second * time.Duration(testSleep))
-	})
+func afterSuiteHook() {
+	dockerComposeDown := []string{"docker-compose", "-f", composeFilePath, "down"}
 
-	ctx.AfterSuite(func() {
-		logger.Infof("Running %s", strings.Join(dockerComposeDown, " "))
+	logger.Infof("Running %s", strings.Join(dockerComposeDown, " "))
 
-		cmd := exec.Command(dockerComposeDown[0], dockerComposeDown[1:]...) //nolint:gosec
-		if out, err := cmd.CombinedOutput(); err != nil {
-			logger.Fatalf("%s: %s", err.Error(), string(out))
-		}
-	})
+	cmd := exec.Command(dockerComposeDown[0], dockerComposeDown[1:]...) //nolint:gosec
+	if out, err := cmd.CombinedOutput(); err != nil {
+		logger.Fatalf("%s: %s", err.Error(), string(out))
+	}
 }
 
 type feature interface {
@@ -138,8 +142,11 @@ type feature interface {
 }
 
 func initializeScenario(sc *godog.ScenarioContext) {
+	commonSteps := common.NewSteps(tlsConfig)
+	commonSteps.RegisterSteps(sc)
+
 	features := []feature{
-		gatekeeper.NewSteps(tlsConfig),
+		gatekeeper.NewSteps(commonSteps),
 	}
 
 	for _, f := range features {
