@@ -4,25 +4,22 @@
 # SPDX-License-Identifier: Apache-2.0
 #
 
-name: "ace ci"
+name: build
 
 env:
   GO_VERSION: 1.17
 
 on:
   push:
-    branches:
-      - main
   pull_request:
-    branches:
-      - main
 
 jobs:
-  Checks:
+  checks:
+    name: Checks
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Set up Go
+      - name: Setup Go
         uses: actions/setup-go@v2
         with:
           go-version: ${{ env.GO_VERSION }}
@@ -32,9 +29,13 @@ jobs:
       - name: Run checks
         run: make checks
 
-  UnitTest:
-    runs-on: ubuntu-latest
+  unitTest:
+    name: Unit test
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
     steps:
       - name: Set up Go
         uses: actions/setup-go@v2
@@ -47,12 +48,14 @@ jobs:
         run: make unit-test
 
       - name: Upload coverage to Codecov
-        run: |
-          bash <(curl https://codecov.io/bash)
-        env:
-          CODECOV_UPLOAD_TOKEN: ${{ secrets.CODECOV_UPLOAD_TOKEN }}
+        timeout-minutes: 10
+        if: matrix.os == 'ubuntu-latest' && github.repository == 'trustbloc/ace'
+        uses: codecov/codecov-action@v1.3.1
+        with:
+          file: ./coverage.out
 
-  BDDTest:
+  bddTest:
+    name: BDD test
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
