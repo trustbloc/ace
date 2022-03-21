@@ -17,7 +17,10 @@ services:
       - DATABASE_TYPE=mongodb
       - DATABASE_URL=mongodb://mongodb.example.com:27017
       - DATABASE_PREFIX=gatekeeper_
-      - GK_VAULT_URL=https://vault.trustbloc.local
+      - GK_VAULT_SERVER_URL=https://vault.trustbloc.local:${VAULT_SERVER_PORT}
+      - GK_VC_ISSUER_URL=https://vc-issuer.example.com:${ISSUER_VC_PORT}/vc-issuer-ucis
+      - GK_DID_RESOLVER_URL=http://did.resolver.example.com:${DID_RESOLVER_PORT}
+      - GK_VC_REQUEST_TOKENS=vcs_issuer=vcs_issuer_rw_token
       - LOG_LEVEL=debug
     ports:
       - "9014:9014"
@@ -26,6 +29,8 @@ services:
     command: start
     depends_on:
       - mongodb.example.com
+      - did.resolver.example.com
+      - vc-issuer.example.com
     networks:
       - bdd_net
 
@@ -49,6 +54,55 @@ services:
       - ${VAULT_SERVER_PORT}:${VAULT_SERVER_PORT}
     entrypoint: ""
     command: /bin/sh -c "vault-server start"
+    volumes:
+      - ./keys/tls:/etc/tls
+    networks:
+      - bdd_net
+
+  did.resolver.example.com:
+    container_name: did.rest.example.com
+    image: ${DID_RESOLVER_IMAGE}:${DID_RESOLVER_IMAGE_TAG}
+    environment:
+      - DID_RESOLVER_HOST_URL=${DID_RESOLVER_HOST}:${DID_RESOLVER_PORT}
+      - DID_RESOLVER_HOST_URL_EXTERNAL=http://did.resolver.example.com:${DID_RESOLVER_PORT}
+      - DID_RESOLVER_CONFIG_FILE=/opt/did-rest/config.json
+      - DID_RESOLVER_TLS_SYSTEMCERTPOOL=true
+      - DID_RESOLVER_TLS_CACERTS=/etc/tls/ec-cacert.pem
+    ports:
+      - ${DID_RESOLVER_PORT}:${DID_RESOLVER_PORT}
+    command:  start
+    volumes:
+      - ../keys/tls:/etc/tls
+      - ./did-resolver/config.json:/opt/did-rest/config.json
+    networks:
+      - bdd_net
+
+  vc-issuer.example.com:
+    container_name: vc-issuer.example.com
+    image: ${ISSUER_VC_IMAGE}:${ISSUER_VC_IMAGE_TAG}
+    environment:
+      - VC_REST_HOST_URL=${ISSUER_VC_HOST}:${ISSUER_VC_PORT}
+      - VC_REST_HOST_URL_EXTERNAL=http://issuer.vc.rest.example.com:${ISSUER_VC_PORT}
+      - EDV_REST_HOST_URL=edv.trustbloc.local/encrypted-data-vaults
+      - BLOC_DOMAIN=testnet.orb.local
+      - UNIVERSAL_RESOLVER_HOST_URL=http://did.resolver.example.com:${DID_RESOLVER_PORT}
+      - DATABASE_TYPE=mongodb
+      - DATABASE_URL=mongodb://mongodb.example.com:${MONGODB_PORT}
+      - DATABASE_PREFIX=issuer_
+      - KMSSECRETS_DATABASE_TYPE=mongodb
+      - KMSSECRETS_DATABASE_URL=mongodb://mongodb.example.com:${MONGODB_PORT}
+      - KMSSECRETS_DATABASE_PREFIX=issuer_
+      - VC_REST_MODE=issuer
+      - VC_REST_TLS_CACERTS=/etc/tls/ec-cacert.pem
+      - VC_REST_TLS_SYSTEMCERTPOOL=true
+      - VC_REST_API_TOKEN=rw_token
+      - VC_REST_REQUEST_TOKENS=csl=rw_token,sidetreeToken=tk1
+      - VC_REST_DID_ANCHOR_ORIGIN=https://testnet.orb.local
+      - VC_REST_CONTEXT_PROVIDER_URL=${CONTEXT_PROVIDER_URL}
+    ports:
+      - ${ISSUER_VC_PORT}:${ISSUER_VC_PORT}
+    entrypoint: ""
+    command: /bin/sh -c "sleep 5;vc-rest start"
     volumes:
       - ./keys/tls:/etc/tls
     networks:
