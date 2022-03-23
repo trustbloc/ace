@@ -166,7 +166,7 @@ func getTLS(cmd *cobra.Command) (*tlsParameters, error) {
 func createStartCmd(srv server) *cobra.Command {
 	return &cobra.Command{
 		Use:   "start",
-		Short: "Starts a gatekeeper server",
+		Short: "Starts Gatekeeper server",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			params, err := getParameters(cmd)
 			if err != nil {

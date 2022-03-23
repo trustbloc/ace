@@ -22,7 +22,8 @@ import (
 	"github.com/trustbloc/ace/pkg/client/vault"
 	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation/models"
 	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation/vcprovider"
-	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/repository"
+	"github.com/trustbloc/ace/pkg/restapi/model"
+	"github.com/trustbloc/ace/pkg/store/protecteddata"
 )
 
 const (
@@ -31,10 +32,10 @@ const (
 
 // ProtectConfig defines external services used by protect ops.
 type ProtectConfig struct {
-	SensitiveDataRepository repository.ProtectedDataRepository
-	VaultClient             vault.Vault
-	VDRI                    vdrapi.Registry
-	VCProvider              vcprovider.Provider
+	Store       protecteddata.Storage
+	VaultClient vault.Vault
+	VDRI        vdrapi.Registry
+	VCProvider  vcprovider.Provider
 }
 
 // ProtectOperation defines the interface for protect ops.
@@ -44,19 +45,19 @@ type ProtectOperation interface {
 
 // protectOperation implements protect operation.
 type protectOperation struct {
-	sensitiveDataRepository repository.ProtectedDataRepository
-	vaultClient             vault.Vault
-	vdri                    vdrapi.Registry
-	vcProvider              vcprovider.Provider
+	store       protecteddata.Storage
+	vaultClient vault.Vault
+	vdri        vdrapi.Registry
+	vcProvider  vcprovider.Provider
 }
 
 // NewProtectOp creates new ProtectOperation.
 func NewProtectOp(config *ProtectConfig) ProtectOperation {
 	return &protectOperation{
-		sensitiveDataRepository: config.SensitiveDataRepository,
-		vaultClient:             config.VaultClient,
-		vdri:                    config.VDRI,
-		vcProvider:              config.VCProvider,
+		store:       config.Store,
+		vaultClient: config.VaultClient,
+		vdri:        config.VDRI,
+		vcProvider:  config.VCProvider,
 	}
 }
 
@@ -66,7 +67,7 @@ func (o *protectOperation) ProtectOp(req *models.ProtectReq) (*models.ProtectRes
 		return nil, err
 	}
 
-	data, err := o.sensitiveDataRepository.Get(hash)
+	data, err := o.store.Get(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +99,7 @@ func (o *protectOperation) ProtectOp(req *models.ProtectReq) (*models.ProtectRes
 		return nil, fmt.Errorf("save vc doc: %w", err)
 	}
 
-	err = o.sensitiveDataRepository.Put(&repository.ProtectedData{
+	err = o.store.Put(&model.ProtectedData{
 		Data:          req.Target,
 		PolicyID:      req.Policy,
 		Hash:          hash,

@@ -1,0 +1,18 @@
+# Copyright SecureKey Technologies Inc. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+
+coverage:
+  status:
+    project:
+      default:
+        target: 0% # TODO: set 80%
+    patch:
+      default:
+        target: 0% # TODO: set 85%
+        only_pulls: true
+
+ignore:
+  - "test/bdd"  # ignore bdd tests
+  - "pkg/mocks"  # ignore mocks
+  - "**/*.gen.go"  # ignore generated files

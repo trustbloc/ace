@@ -31,3 +31,27 @@ type DataProfile struct {
 	Created                 *time.Time `json:"created,omitempty"`
 	DIDPrivateKey           string     `json:"didPrivateKey,omitempty"`
 }
+
+// ProtectedData defines the model for protected data.
+type ProtectedData struct {
+	Data          string `json:"data"`
+	PolicyID      string `json:"policyId"`
+	Hash          string `json:"hash"`
+	DID           string `json:"did"`
+	TargetVCDocID string `json:"targetVCDocID"`
+}
+
+// PolicyDocument contains a policy configuration for storing and releasing protected data.
+type PolicyDocument struct {
+	// A list of DIDs identifying the entities collecting sensitive data and permitted to protect those objects with
+	// this policy.
+	Collectors []string `json:"collectors"`
+	// A list of DIDs identifying the entities permitted to request the release of protected objects associated with
+	// this policy.
+	Handlers []string `json:"handlers"`
+	// A list of DIDs identifying entities required to provide authorization for the release of the protected object.
+	Approvers []string `json:"approvers"`
+	// The minimum number of (unique) approvers required before an object may be released back to the handler.
+	// This allows for an "m of N" approval scenario. Constraints: 0 < min_approvers < approvers.length.
+	MinApprovers int `json:"min_approvers"`
+}
