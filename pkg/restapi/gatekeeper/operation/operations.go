@@ -8,7 +8,7 @@ package operation
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -22,6 +22,7 @@ import (
 	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation/models"
 	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation/vcprovider"
 	"github.com/trustbloc/ace/pkg/restapi/model"
+	"github.com/trustbloc/ace/pkg/store/policy"
 	"github.com/trustbloc/ace/pkg/store/protecteddata"
 )
 
@@ -32,38 +33,34 @@ const (
 	policyIDVarName = "policy_id"
 	baseV1Path      = "/v1"
 	protectEndpoint = baseV1Path + "/protect"
-	policyEndpoint  = baseV1Path + "/profile/{" + policyIDVarName + "}"
-)
-
-const (
-	policyStoreName = "policy"
+	policyEndpoint  = baseV1Path + "/policy/{" + policyIDVarName + "}"
 )
 
 // Config defines configuration for Gatekeeper operations.
 type Config struct {
-	StoreProvider storage.Provider
-	VaultClient   vault.Vault
-	VDRI          vdrapi.Registry
-	VCProvider    vcprovider.Provider
+	StorageProvider storage.Provider
+	VaultClient     vault.Vault
+	VDRI            vdrapi.Registry
+	VCProvider      vcprovider.Provider
 }
 
 // New returns a new Operation instance.
-func New(cfg *Config) (*Operation, error) {
-	protectedDataStore, err := protecteddata.New(cfg.StoreProvider)
+func New(config *Config) (*Operation, error) {
+	protectedDataStore, err := protecteddata.New(config.StorageProvider)
 	if err != nil {
 		return nil, err
 	}
 
-	policyStore, err := cfg.StoreProvider.OpenStore(policyStoreName)
+	policyStore, err := policy.New(config.StorageProvider)
 	if err != nil {
 		return nil, err
 	}
 
 	protectOp := NewProtectOp(&ProtectConfig{
 		Store:       protectedDataStore,
-		VaultClient: cfg.VaultClient,
-		VDRI:        cfg.VDRI,
-		VCProvider:  cfg.VCProvider,
+		VaultClient: config.VaultClient,
+		VDRI:        config.VDRI,
+		VCProvider:  config.VCProvider,
 	})
 
 	return &Operation{
@@ -75,7 +72,7 @@ func New(cfg *Config) (*Operation, error) {
 // Operation defines handlers for rp operations.
 type Operation struct {
 	protectOperation ProtectOperation
-	policyStore      storage.Store
+	policyStore      policy.Repository
 }
 
 // GetRESTHandlers get all controller API handler available for this service.
@@ -117,22 +114,10 @@ func (o *Operation) createPolicyHandler(rw http.ResponseWriter, r *http.Request)
 	}
 
 	policyID := strings.ToLower(mux.Vars(r)[policyIDVarName])
-	if policyID == "" {
-		respondError(rw, http.StatusBadRequest, errors.New("missing profile ID"))
 
-		return
-	}
-
-	b, err := json.Marshal(doc)
+	err = o.policyStore.Put(policyID, &doc)
 	if err != nil {
-		respondError(rw, http.StatusInternalServerError, err)
-
-		return
-	}
-
-	err = o.policyStore.Put(policyID, b)
-	if err != nil {
-		respondError(rw, http.StatusInternalServerError, err)
+		respondError(rw, http.StatusInternalServerError, fmt.Errorf("store policy: %w", err))
 
 		return
 	}

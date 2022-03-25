@@ -301,10 +301,10 @@ func startService(params *serviceParameters, srv server) error { // nolint: funl
 	})
 
 	service, err := gatekeeper.New(&operation.Config{
-		StoreProvider: storeProvider,
-		VaultClient:   vClient,
-		VDRI:          vdri,
-		VCProvider:    vcProvider,
+		StorageProvider: storeProvider,
+		VaultClient:     vClient,
+		VDRI:            vdri,
+		VCProvider:      vcProvider,
 	})
 	if err != nil {
 		return err
