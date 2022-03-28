@@ -49,10 +49,10 @@ type mockProvider struct {
 	RemoteProviderStore ldstore.RemoteProviderStore
 }
 
-func (p *mockProvider) JSONLDContextStore() ldstore.ContextStore {
+func (p *mockProvider) JSONLDContextStore() ldstore.ContextStore { //nolint:ireturn
 	return p.ContextStore
 }
 
-func (p *mockProvider) JSONLDRemoteProviderStore() ldstore.RemoteProviderStore {
+func (p *mockProvider) JSONLDRemoteProviderStore() ldstore.RemoteProviderStore { //nolint:ireturn
 	return p.RemoteProviderStore
 }

@@ -57,12 +57,12 @@ type LDStoreProvider struct {
 }
 
 // JSONLDContextStore returns a JSON-LD context store.
-func (p *LDStoreProvider) JSONLDContextStore() ldstore.ContextStore {
+func (p *LDStoreProvider) JSONLDContextStore() ldstore.ContextStore { //nolint:ireturn
 	return p.ContextStore
 }
 
 // JSONLDRemoteProviderStore returns a JSON-LD remote provider store.
-func (p *LDStoreProvider) JSONLDRemoteProviderStore() ldstore.RemoteProviderStore {
+func (p *LDStoreProvider) JSONLDRemoteProviderStore() ldstore.RemoteProviderStore { //nolint:ireturn
 	return p.RemoteProviderStore
 }
 
@@ -94,8 +94,9 @@ type httpClient interface {
 }
 
 // CreateJSONLDDocumentLoader creates a new JSON-LD document loader.
-func CreateJSONLDDocumentLoader(ldStore ldStoreProvider, client httpClient,
-	providerURLs []string) (jsonld.DocumentLoader, error) {
+// nolint:ireturn
+func CreateJSONLDDocumentLoader(ldStore ldStoreProvider, client httpClient, providerURLs []string,
+) (jsonld.DocumentLoader, error) {
 	var loaderOpts []ld.DocumentLoaderOpts
 
 	for _, u := range providerURLs {

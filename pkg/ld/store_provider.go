@@ -38,11 +38,11 @@ func NewStoreProvider(storageProvider storage.Provider) (*StoreProvider, error) 
 }
 
 // JSONLDContextStore returns JSON-LD context store.
-func (p *StoreProvider) JSONLDContextStore() ld.ContextStore {
+func (p *StoreProvider) JSONLDContextStore() ld.ContextStore { //nolint:ireturn
 	return p.ContextStore
 }
 
 // JSONLDRemoteProviderStore returns JSON-LD remote provider store.
-func (p *StoreProvider) JSONLDRemoteProviderStore() ld.RemoteProviderStore {
+func (p *StoreProvider) JSONLDRemoteProviderStore() ld.RemoteProviderStore { //nolint:ireturn
 	return p.RemoteProviderStore
 }

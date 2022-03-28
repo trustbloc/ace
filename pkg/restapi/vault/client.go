@@ -184,7 +184,8 @@ func WithRegistry(registry vdr.Registry) Opt {
 
 // NewClient creates a new vault client.
 func NewClient(kmsURL, edvURL string, kmsClient kms.KeyManager, db storage.Provider, loader ld.DocumentLoader,
-	opts ...Opt) (*Client, error) {
+	opts ...Opt,
+) (*Client, error) {
 	cryptoService, err := tinkcrypto.New()
 	if err != nil {
 		return nil, fmt.Errorf("tinkcrypto new: %w", err)
@@ -266,8 +267,8 @@ func (c *Client) CreateVault() (*CreatedVault, error) {
 
 // CreateAuthorization creates a new authorization.
 // nolint: funlen
-func (c *Client) CreateAuthorization(vaultID, requestingParty string,
-	scope *AuthorizationsScope) (*CreatedAuthorization, error) {
+func (c *Client) CreateAuthorization(vaultID, requestingParty string, scope *AuthorizationsScope,
+) (*CreatedAuthorization, error) {
 	info, err := c.getVaultInfo(vaultID)
 	if err != nil {
 		return nil, fmt.Errorf("get vault info: %w", err)
@@ -723,7 +724,7 @@ func (c *Client) kmsSign(controller string, auth *Location) func(req *http.Reque
 func (c *Client) sign(req *http.Request, controller, action, zcap string) (*http.Header, error) {
 	req.Header.Set(
 		zcapld.CapabilityInvocationHTTPHeader,
-		fmt.Sprintf(`zcap capability="%s",action="%s"`, zcap, action),
+		fmt.Sprintf(`zcap capability=%q,action=%q`, zcap, action),
 	)
 
 	hs := httpsignatures.NewHTTPSignatures(&zcapld.AriesDIDKeySecrets{})

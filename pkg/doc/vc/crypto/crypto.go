@@ -190,8 +190,8 @@ type Crypto struct {
 }
 
 // SignCredential sign vc.
-func (c *Crypto) SignCredential(dataProfile *vcprofile.DataProfile, vc *verifiable.Credential,
-	opts ...SigningOpts) (*verifiable.Credential, error) {
+func (c *Crypto) SignCredential(dataProfile *vcprofile.DataProfile, vc *verifiable.Credential, opts ...SigningOpts,
+) (*verifiable.Credential, error) {
 	signOpts := &signingOpts{}
 	// apply opts
 	for _, opt := range opts {
@@ -218,8 +218,8 @@ func (c *Crypto) SignCredential(dataProfile *vcprofile.DataProfile, vc *verifiab
 }
 
 // SignPresentation signs a presentation.
-func (c *Crypto) SignPresentation(profile *vcprofile.HolderProfile, vp *verifiable.Presentation,
-	opts ...SigningOpts) (*verifiable.Presentation, error) {
+func (c *Crypto) SignPresentation(profile *vcprofile.HolderProfile, vp *verifiable.Presentation, opts ...SigningOpts,
+) (*verifiable.Presentation, error) {
 	signOpts := &signingOpts{}
 	// apply opts
 	for _, opt := range opts {
@@ -250,7 +250,8 @@ func (c *Crypto) SignPresentation(profile *vcprofile.HolderProfile, vp *verifiab
 }
 
 func (c *Crypto) getLinkedDataProofContext(creator, signatureType, proofPurpose string,
-	signRep verifiable.SignatureRepresentation, opts *signingOpts) (*verifiable.LinkedDataProofContext, error) {
+	signRep verifiable.SignatureRepresentation, opts *signingOpts,
+) (*verifiable.LinkedDataProofContext, error) {
 	s, method, err := c.getSigner(creator, opts, signatureType)
 	if err != nil {
 		return nil, err

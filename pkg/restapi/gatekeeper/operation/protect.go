@@ -27,7 +27,8 @@ import (
 )
 
 const (
-	credentialContext = "https://www.w3.org/2018/credentials/v1"
+	credentialContext = "https://www.w3.org/2018/credentials/v1" //nolint:gosec
+	resolveMaxRetry   = 10
 )
 
 // ProtectConfig defines external services used by protect ops.
@@ -52,7 +53,7 @@ type protectOperation struct {
 }
 
 // NewProtectOp creates new ProtectOperation.
-func NewProtectOp(config *ProtectConfig) ProtectOperation {
+func NewProtectOp(config *ProtectConfig) ProtectOperation { //nolint:ireturn
 	return &protectOperation{
 		store:       config.Store,
 		vaultClient: config.VaultClient,
@@ -89,7 +90,7 @@ func (o *protectOperation) ProtectOp(req *models.ProtectReq) (*models.ProtectRes
 	}
 
 	// resolve DID
-	err = resolveDID(o.vdri, vaultID, 10)
+	err = resolveDID(o.vdri, vaultID, resolveMaxRetry)
 	if err != nil {
 		return nil, fmt.Errorf("resolve did %s : %w", vaultID, err)
 	}
@@ -168,8 +169,7 @@ func (o *protectOperation) saveVCDoc(vaultID string, vc *verifiable.Credential) 
 func calculateDataHash(data string) (string, error) {
 	h := fnv.New128()
 
-	_, err := h.Write([]byte(data)) //nolint: ifshort
-	if err != nil {
+	if _, err := h.Write([]byte(data)); err != nil {
 		return "", fmt.Errorf("calculate sensitive data hash fail: %w", err)
 	}
 

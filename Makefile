@@ -3,13 +3,13 @@
 # SPDX-License-Identifier: Apache-2.0
 
 GOBIN_PATH		=$(abspath .)/build/bin
-LINT_VERSION 	?=v1.39.0
+LINT_VERSION 	?=v1.45.2
 
 DOCKER_OUTPUT_NS      ?=ghcr.io
 GATEKEEPER_IMAGE_NAME ?=trustbloc/gatekeeper
 
 ALPINE_VER ?= 3.14
-GO_VER     ?= 1.17
+GO_VER     ?= 1.18
 
 GATE_KEEPER_PATH=cmd/gatekeeper
 

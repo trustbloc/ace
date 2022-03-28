@@ -10,7 +10,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -69,7 +69,8 @@ func New(baseURL string, opts ...Option) *Client {
 
 // CreateVault creates a new vault.
 func (c *Client) CreateVault() (*vault.CreatedVault, error) {
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, c.baseURL+operation.CreateVaultPath, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, c.baseURL+operation.CreateVaultPath,
+		http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("new request: %w", err)
 	}
@@ -130,7 +131,7 @@ func (c *Client) SaveDoc(vaultID, id string, content interface{}) (*vault.Docume
 func (c *Client) GetDocMetaData(vaultID, docID string) (*vault.DocumentMetadata, error) { // nolint: dupl
 	target := c.baseURL + fmt.Sprintf(getDocMetadataPath, url.QueryEscape(vaultID), url.QueryEscape(docID))
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, target, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, target, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("new request: %w", err)
 	}
@@ -149,8 +150,8 @@ func (c *Client) GetDocMetaData(vaultID, docID string) (*vault.DocumentMetadata,
 }
 
 // CreateAuthorization creates an authorization.
-func (c *Client) CreateAuthorization(vaultID, requestingParty string,
-	scope *vault.AuthorizationsScope) (*vault.CreatedAuthorization, error) {
+func (c *Client) CreateAuthorization(vaultID, requestingParty string, scope *vault.AuthorizationsScope,
+) (*vault.CreatedAuthorization, error) {
 	target := c.baseURL + fmt.Sprintf(createAuthorizationsPath, url.QueryEscape(vaultID))
 
 	src, err := json.Marshal(operation.CreateAuthorizationsBody{
@@ -183,7 +184,7 @@ func (c *Client) CreateAuthorization(vaultID, requestingParty string,
 func (c *Client) GetAuthorization(vaultID, id string) (*vault.CreatedAuthorization, error) { // nolint: dupl
 	target := c.baseURL + fmt.Sprintf(getAuthorizationsPath, url.QueryEscape(vaultID), url.QueryEscape(id))
 
-	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, target, nil)
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, target, http.NoBody)
 	if err != nil {
 		return nil, fmt.Errorf("new request: %w", err)
 	}
@@ -201,7 +202,7 @@ func (c *Client) GetAuthorization(vaultID, id string) (*vault.CreatedAuthorizati
 	return &result, nil
 }
 
-func (c *Client) sendHTTPRequest(req *http.Request, status int) ([]byte, error) { // nolunt: dupl
+func (c *Client) sendHTTPRequest(req *http.Request, status int) ([]byte, error) {
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
@@ -214,7 +215,7 @@ func (c *Client) sendHTTPRequest(req *http.Request, status int) ([]byte, error) 
 		}
 	}()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logger.Warnf("failed to read response body for status %d: %s", resp.StatusCode, err)
 	}

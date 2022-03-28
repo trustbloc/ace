@@ -4,7 +4,7 @@
 
 module github.com/trustbloc/ace/test/bdd
 
-go 1.17
+go 1.18
 
 require (
 	github.com/cucumber/godog v0.12.4

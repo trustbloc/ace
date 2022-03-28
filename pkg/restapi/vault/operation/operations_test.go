@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -285,8 +284,8 @@ func TestCreateAuthorization(t *testing.T) {
 
 	t.Run("Error", func(t *testing.T) {
 		v := newVaultMock()
-		v.createAuthorizationFn = func(vID, rp string,
-			scope *vault.AuthorizationsScope) (*vault.CreatedAuthorization, error) {
+		v.createAuthorizationFn = func(vID, rp string, scope *vault.AuthorizationsScope,
+		) (*vault.CreatedAuthorization, error) {
 			return nil, errors.New("test error")
 		}
 
@@ -347,7 +346,7 @@ func TestWriteResponse(t *testing.T) {
 	(&vaultoperation.Operation{}).WriteResponse(rec, make(chan int), http.StatusInternalServerError)
 	reader := rec.Result().Body
 
-	res, err := ioutil.ReadAll(reader)
+	res, err := io.ReadAll(reader)
 	require.NoError(t, reader.Close())
 	require.NoError(t, err)
 	require.Empty(t, res)
@@ -386,7 +385,7 @@ func sendRequestToHandler(t *testing.T, h support.Handler, reqBody io.Reader, pa
 	return rr.Body, rr.Code
 }
 
-func handlerLookup(t *testing.T, op *vaultoperation.Operation, lookup, method string) rest.Handler {
+func handlerLookup(t *testing.T, op *vaultoperation.Operation, lookup, method string) rest.Handler { //nolint:ireturn
 	t.Helper()
 
 	for _, h := range op.GetRESTHandlers() {
@@ -458,8 +457,8 @@ func (v *vaultMock) GetDocMetadata(vaultID, docID string) (*vault.DocumentMetada
 	return v.getDocMetadataFn(vaultID, docID)
 }
 
-func (v *vaultMock) CreateAuthorization(vID, rp string,
-	scope *vault.AuthorizationsScope) (*vault.CreatedAuthorization, error) {
+func (v *vaultMock) CreateAuthorization(vID, rp string, scope *vault.AuthorizationsScope,
+) (*vault.CreatedAuthorization, error) {
 	return v.createAuthorizationFn(vID, rp, scope)
 }
 

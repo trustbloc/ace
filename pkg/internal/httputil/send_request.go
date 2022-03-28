@@ -10,7 +10,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
@@ -20,8 +20,8 @@ type httpClient interface {
 
 // SendHTTPRequest utility function to send a http request.
 // It implements general error handling logic and read of the request body.
-func SendHTTPRequest(httpClient httpClient, method, endpoint string, reqBody []byte, status int,
-	httpToken string) ([]byte, error) {
+func SendHTTPRequest(httpClient httpClient, method, endpoint string, reqBody []byte, status int, httpToken string,
+) ([]byte, error) {
 	req, err := http.NewRequestWithContext(context.Background(), method, endpoint, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func SendHTTPRequest(httpClient httpClient, method, endpoint string, reqBody []b
 
 	defer resp.Body.Close() // nolint: errcheck
 
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response body for status: %d", resp.StatusCode)
 	}

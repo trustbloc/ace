@@ -355,7 +355,7 @@ func getVCRequestTokens(cmd *cobra.Command) (map[string]string, error) {
 	return tokens, nil
 }
 
-func createVDRI(didResolverURL string, httpClient *http.Client) (vdrapi.Registry, error) {
+func createVDRI(didResolverURL string, httpClient *http.Client) (vdrapi.Registry, error) { //nolint:ireturn
 	didResolverVDRI, err := httpbinding.New(didResolverURL, httpbinding.WithHTTPClient(httpClient),
 		httpbinding.WithAccept(func(method string) bool {
 			return method == "orb" || method == "v1" || method == "elem" || method == "sov" ||

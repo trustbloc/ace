@@ -9,7 +9,6 @@ package operation
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -255,7 +254,7 @@ func (o *Operation) writeErrorResponse(rw http.ResponseWriter, err error, status
 	logger.Errorf("%v", err)
 
 	o.WriteResponse(rw, model.ErrorResponse{
-		Message: fmt.Sprintf("%v", err),
+		Message: err.Error(),
 	}, status)
 }
 
