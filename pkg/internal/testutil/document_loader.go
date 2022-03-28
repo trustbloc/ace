@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package testutil
 
 import (
-	_ "embed" //nolint:gci // required for go:embed
+	_ "embed"
 	"testing"
 
 	"github.com/hyperledger/aries-framework-go/pkg/doc/ld"
@@ -17,7 +17,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// nolint:gochecknoglobals // embedded test contexts
 var (
 	//go:embed contexts/credentials-examples_v1.jsonld
 	credentialExamples []byte
@@ -38,11 +37,11 @@ type mockLDStoreProvider struct {
 	RemoteProviderStore ldstore.RemoteProviderStore
 }
 
-func (p *mockLDStoreProvider) JSONLDContextStore() ldstore.ContextStore {
+func (p *mockLDStoreProvider) JSONLDContextStore() ldstore.ContextStore { //nolint:ireturn
 	return p.ContextStore
 }
 
-func (p *mockLDStoreProvider) JSONLDRemoteProviderStore() ldstore.RemoteProviderStore {
+func (p *mockLDStoreProvider) JSONLDRemoteProviderStore() ldstore.RemoteProviderStore { //nolint:ireturn
 	return p.RemoteProviderStore
 }
 

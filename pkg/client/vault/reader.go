@@ -35,8 +35,8 @@ func WithDocumentDecrypter(jd jose.Decrypter) ReaderOption {
 //
 // If the Confidential Storage document is encrypted then use the WithDocumentDecrypter ReaderOption to
 // decrypt the contents.
-func NewDocumentReader(vaultID, docID string,
-	client ConfidentialStorageDocReader, options ...ReaderOption) *DocumentReader {
+func NewDocumentReader(vaultID, docID string, client ConfidentialStorageDocReader, options ...ReaderOption,
+) *DocumentReader {
 	r := &DocumentReader{
 		client:       client,
 		vaultID:      vaultID,

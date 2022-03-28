@@ -26,7 +26,6 @@ func TestDBParams(t *testing.T) {
 			Timeout: 30,
 		}
 		setEnv(t, expected)
-		defer unsetEnv(t)
 		cmd := &cobra.Command{}
 		common.Flags(cmd)
 		result, err := common.DBParams(cmd)
@@ -41,7 +40,6 @@ func TestDBParams(t *testing.T) {
 			Timeout: common.DatabaseTimeoutDefault,
 		}
 		setEnv(t, expected)
-		defer unsetEnv(t)
 		err := os.Setenv(common.DatabaseTimeoutEnvKey, "")
 		require.NoError(t, err)
 		cmd := &cobra.Command{}
@@ -57,7 +55,6 @@ func TestDBParams(t *testing.T) {
 			Timeout: 30,
 		}
 		setEnv(t, expected)
-		defer unsetEnv(t)
 		cmd := &cobra.Command{}
 		common.Flags(cmd)
 		_, err := common.DBParams(cmd)
@@ -70,7 +67,6 @@ func TestDBParams(t *testing.T) {
 			Timeout: 30,
 		}
 		setEnv(t, expected)
-		defer unsetEnv(t)
 		cmd := &cobra.Command{}
 		common.Flags(cmd)
 		_, err := common.DBParams(cmd)
@@ -83,7 +79,6 @@ func TestDBParams(t *testing.T) {
 			Prefix: "prefix",
 		}
 		setEnv(t, expected)
-		defer unsetEnv(t)
 		err := os.Setenv(common.DatabaseTimeoutEnvKey, "invalid")
 		require.NoError(t, err)
 		cmd := &cobra.Command{}
@@ -155,25 +150,7 @@ func TestInitStore(t *testing.T) {
 func setEnv(t *testing.T, values *common.DBParameters) {
 	t.Helper()
 
-	err := os.Setenv(common.DatabaseURLEnvKey, values.URL)
-	require.NoError(t, err)
-
-	err = os.Setenv(common.DatabasePrefixEnvKey, values.Prefix)
-	require.NoError(t, err)
-
-	err = os.Setenv(common.DatabaseTimeoutEnvKey, strconv.FormatUint(values.Timeout, 10))
-	require.NoError(t, err)
-}
-
-func unsetEnv(t *testing.T) {
-	t.Helper()
-
-	err := os.Unsetenv(common.DatabaseURLEnvKey)
-	require.NoError(t, err)
-
-	err = os.Unsetenv(common.DatabasePrefixEnvKey)
-	require.NoError(t, err)
-
-	err = os.Unsetenv(common.DatabaseTimeoutEnvKey)
-	require.NoError(t, err)
+	t.Setenv(common.DatabaseURLEnvKey, values.URL)
+	t.Setenv(common.DatabasePrefixEnvKey, values.Prefix)
+	t.Setenv(common.DatabaseTimeoutEnvKey, strconv.FormatUint(values.Timeout, 10))
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/trustbloc/ace/pkg/internal/testutil"
 )
 
+//nolint:forcetypeassert
 func TestCrypto_SignCredential(t *testing.T) {
 	t.Run("test success", func(t *testing.T) {
 		c := New(&mockkms.KeyManager{}, &cryptomock.Crypto{},

@@ -85,8 +85,8 @@ func TestCreatePolicyHandler(t *testing.T) {
 	})
 }
 
-func handleRequest(t *testing.T, op *operation.Operation, path, method string,
-	body io.Reader) *httptest.ResponseRecorder {
+func handleRequest(t *testing.T, op *operation.Operation, path, method string, body io.Reader,
+) *httptest.ResponseRecorder {
 	t.Helper()
 
 	router := mux.NewRouter()

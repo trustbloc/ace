@@ -45,7 +45,7 @@ func New(storageProvider storage.Provider) (*Store, error) {
 func (s *Store) Get(hash string) (*model.ProtectedData, error) {
 	data, err := s.store.Get(hash)
 	if errors.Is(err, storage.ErrDataNotFound) {
-		return nil, nil
+		return nil, nil //nolint:nilnil
 	}
 
 	if err != nil {

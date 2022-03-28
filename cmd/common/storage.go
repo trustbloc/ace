@@ -112,7 +112,7 @@ func DBParams(cmd *cobra.Command) (*DBParameters, error) {
 		timeout = strconv.Itoa(DatabaseTimeoutDefault)
 	}
 
-	params.Timeout, err = strconv.ParseUint(timeout, 10, 64)
+	params.Timeout, err = strconv.ParseUint(timeout, 10, 64) //nolint:gomnd
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse dbTimeout %s: %w", timeout, err)
 	}
@@ -121,7 +121,7 @@ func DBParams(cmd *cobra.Command) (*DBParameters, error) {
 }
 
 // InitStore provider.
-func InitStore(params *DBParameters, logger log.Logger) (storage.Provider, error) {
+func InitStore(params *DBParameters, logger log.Logger) (storage.Provider, error) { //nolint:ireturn
 	driver, url, err := parseURL(params.URL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse %s: %w", params.URL, err)

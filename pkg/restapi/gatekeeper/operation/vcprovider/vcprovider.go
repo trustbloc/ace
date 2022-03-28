@@ -51,7 +51,7 @@ type issueCredentialRequest struct {
 }
 
 // New creates vc provider.
-func New(config *Config) Provider {
+func New(config *Config) Provider { //nolint:ireturn
 	return &vcProvider{
 		vcIssuerURL:     config.VCIssuerURL,
 		vcRequestTokens: config.VCRequestTokens,

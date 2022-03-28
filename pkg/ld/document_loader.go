@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package ld
 
 import (
-	_ "embed" //nolint:gci // required for go:embed
+	_ "embed"
 	"fmt"
 
 	"github.com/hyperledger/aries-framework-go/pkg/doc/ld"
@@ -16,7 +16,6 @@ import (
 	jsonld "github.com/piprate/json-gold/ld"
 )
 
-// nolint:gochecknoglobals //embedded contexts
 var (
 	//go:embed contexts/lds-jws2020-v1.jsonld
 	jws2020V1Vocab []byte
@@ -42,7 +41,7 @@ type provider interface {
 }
 
 // NewDocumentLoader returns a JSON-LD document loader with preloaded contexts.
-func NewDocumentLoader(p provider, opts ...ld.DocumentLoaderOpts) (jsonld.DocumentLoader, error) {
+func NewDocumentLoader(p provider, opts ...ld.DocumentLoaderOpts) (jsonld.DocumentLoader, error) { //nolint:ireturn
 	loader, err := ld.NewDocumentLoader(p, append(opts, ld.WithExtraContexts(embedContexts...))...)
 	if err != nil {
 		return nil, fmt.Errorf("new document loader: %w", err)
