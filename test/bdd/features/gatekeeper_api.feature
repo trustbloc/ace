@@ -15,9 +15,21 @@ Feature: Gatekeeper API
     Then  response status is "200 OK"
      And  response contains "status" with value "success"
 
-  Scenario: Protect a social media handle
-    Given Intake Processor wants to convert "@thanos27" social media handle into a DID
-      And Issuer profile "vc-issuer-gk" is created on "http://localhost:8070" for "localhost:8065"
+  Scenario: Create policy configuration for storing/releasing protected data
+    When  an HTTP PUT is sent to "https://localhost:9014/v1/policy/containment-policy"
+      """
+      {
+        "collectors": ["did:example:ray_stantz"],
+        "handlers": ["did:example:alter_peck"],
+        "approvers": ["did:example:peter_venkman", "did:example:eon_spengler", "did:example:winton_zeddemore"],
+        "min_approvers": 2
+      }
+      """
+    Then  response status is "200 OK"
+
+   Scenario: Protect a social media handle
+    Given Issuer profile "vc-issuer-gk" is created on "http://localhost:8070" for "localhost:8065"
+      And Intake Processor wants to convert "@thanos27" social media handle into a DID
     When  an HTTP POST is sent to "https://localhost:9014/v1/protect"
       """
       {
@@ -27,3 +39,16 @@ Feature: Gatekeeper API
       """
     Then  response status is "200 OK"
      And  response contains non-empty "did"
+
+    @wip
+    Scenario: Create a new Release transaction on a DID
+      Given a social media handle "@big_pikachu" was converted into a DID
+        And Handler decides to request release of that DID
+      When  an HTTP POST is sent to "https://localhost:9014/v1/release"
+        """
+        {
+          "target": "{{ .DID }}"
+        }
+        """
+      Then  response status is "200 OK"
+       And  response contains non-empty "ticket_id"
