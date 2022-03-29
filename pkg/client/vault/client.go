@@ -107,6 +107,8 @@ func (c *Client) SaveDoc(vaultID, id string, content interface{}) (*vault.Docume
 		return nil, fmt.Errorf("marshal: %w", err)
 	}
 
+	fmt.Printf("saved doc body %s", string(src))
+
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodPost, target, bytes.NewReader(src))
 	if err != nil {
 		return nil, fmt.Errorf("new request: %w", err)

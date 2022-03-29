@@ -15,14 +15,14 @@ Feature: Gatekeeper API
     Then  response status is "200 OK"
      And  response contains "status" with value "success"
 
-  @wip
   Scenario: Protect a social media handle
     Given Intake Processor wants to convert "@thanos27" social media handle into a DID
-    When  an HTTP POST is sent to "https://localhost:9014/protect"
+      And Issuer profile "vc-issuer-gk" is created on "http://localhost:8070" for "localhost:8065"
+    When  an HTTP POST is sent to "https://localhost:9014/v1/protect"
       """
       {
         "target": "{{ .SocialMediaHandle }}",
-        "policy": {{ .PolicyID }}
+        "policy": "{{ .PolicyID }}"
       }
       """
     Then  response status is "200 OK"

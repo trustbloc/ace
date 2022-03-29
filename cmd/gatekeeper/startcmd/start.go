@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/hyperledger/aries-framework-go-ext/component/vdr/orb"
 	"github.com/hyperledger/aries-framework-go/pkg/common/log"
 	vdrapi "github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdr"
 	vdrpkg "github.com/hyperledger/aries-framework-go/pkg/vdr"
@@ -63,6 +64,10 @@ const (
 	didResolverURLFlagUsage = "DID Resolver URL."
 	didResolverURLEnvKey    = "GK_DID_RESOLVER_URL"
 
+	blocDomainFlagName  = "bloc-domain"
+	blocDomainFlagUsage = "Bloc domain"
+	blocDomainEnvKey    = "GK_BLOC_DOMAIN"
+
 	// remote JSON-LD context provider url.
 	contextProviderFlagName  = "context-provider-url"
 	contextProviderEnvKey    = "GK_CONTEXT_PROVIDER_URL"
@@ -102,6 +107,7 @@ type serviceParameters struct {
 	host                string
 	tlsParams           *tlsParameters
 	dbParams            *common.DBParameters
+	blocDomain          string
 	didResolverURL      string
 	contextProviderURLs []string
 	vcRequestTokens     map[string]string
@@ -194,8 +200,13 @@ func getParameters(cmd *cobra.Command) (*serviceParameters, error) {
 		return nil, err
 	}
 
+	blocDomain, err := cmdutils.GetUserSetVarFromString(cmd, blocDomainFlagName, blocDomainEnvKey, true)
+	if err != nil {
+		return nil, err
+	}
+
 	didResolverURL, err := cmdutils.GetUserSetVarFromString(cmd,
-		didResolverURLFlagName, didResolverURLEnvKey, false)
+		didResolverURLFlagName, didResolverURLEnvKey, true)
 	if err != nil {
 		return nil, err
 	}
@@ -226,6 +237,7 @@ func getParameters(cmd *cobra.Command) (*serviceParameters, error) {
 		host:                host,
 		tlsParams:           tlsParams,
 		dbParams:            dbParams,
+		blocDomain:          blocDomain,
 		didResolverURL:      didResolverURL,
 		contextProviderURLs: contextProviderURLs,
 		vcRequestTokens:     vcRequestTokens,
@@ -240,6 +252,7 @@ func createFlags(cmd *cobra.Command) {
 	cmd.Flags().StringArrayP(tlsCACertsFlagName, "", []string{}, tlsCACertsFlagUsage)
 	cmd.Flags().StringP(tlsServeCertPathFlagName, "", "", tlsServeCertPathFlagUsage)
 	cmd.Flags().StringP(tlsServeKeyPathFlagName, "", "", tlsServeKeyPathFlagUsage)
+	cmd.Flags().StringP(blocDomainFlagName, "", "", blocDomainFlagUsage)
 	cmd.Flags().StringP(didResolverURLFlagName, "", "", didResolverURLFlagUsage)
 	cmd.Flags().StringArrayP(contextProviderFlagName, "", []string{}, contextProviderFlagUsage)
 	cmd.Flags().StringP(vaultServerURLFlagName, "", "", vaultServerURLFlagUsage)
@@ -276,7 +289,7 @@ func startService(params *serviceParameters, srv server) error { // nolint: funl
 		TLSClientConfig: tlsConfig,
 	}}
 
-	vdri, err := createVDRI(params.didResolverURL, httpClient)
+	vdri, err := createVDRI(params.didResolverURL, params.blocDomain, httpClient)
 	if err != nil {
 		return err
 	}
@@ -355,15 +368,31 @@ func getVCRequestTokens(cmd *cobra.Command) (map[string]string, error) {
 	return tokens, nil
 }
 
-func createVDRI(didResolverURL string, httpClient *http.Client) (vdrapi.Registry, error) { //nolint:ireturn
-	didResolverVDRI, err := httpbinding.New(didResolverURL, httpbinding.WithHTTPClient(httpClient),
-		httpbinding.WithAccept(func(method string) bool {
-			return method == "orb" || method == "v1" || method == "elem" || method == "sov" ||
-				method == "web" || method == "key" || method == "factom"
-		}))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create new universal resolver vdr: %w", err)
+func createVDRI(didResolverURL, blocDomain string, httpClient *http.Client) (vdrapi.Registry, error) { //nolint:ireturn
+	var opts []vdrpkg.Option
+
+	if didResolverURL != "" {
+		didResolverVDRI, err := httpbinding.New(didResolverURL, httpbinding.WithHTTPClient(httpClient),
+			httpbinding.WithAccept(func(method string) bool {
+				return method == "orb" || method == "v1" || method == "elem" || method == "sov" ||
+					method == "web" || method == "key" || method == "factom"
+			}))
+		if err != nil {
+			return nil, fmt.Errorf("failed to create new universal resolver vdr: %w", err)
+		}
+
+		// add universal resolver vdr
+		opts = append(opts, vdrpkg.WithVDR(didResolverVDRI))
 	}
 
-	return vdrpkg.New(vdrpkg.WithVDR(didResolverVDRI)), nil
+	if blocDomain != "" {
+		vdr, err := orb.New(nil, orb.WithDomain(blocDomain), orb.WithHTTPClient(httpClient))
+		if err != nil {
+			return nil, err
+		}
+
+		opts = append(opts, vdrpkg.WithVDR(vdr))
+	}
+
+	return vdrpkg.New(opts...), nil
 }
