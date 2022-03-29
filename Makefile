@@ -37,8 +37,7 @@ lint:
 
 .PHONY: unit-test
 unit-test:
-	@go test ./... -count=1 -race -coverprofile=coverage.out -covermode=atomic -timeout=10m
-	@cd cmd/gatekeeper && go test ./... -count=1 -race -coverprofile=../../coverage_gatekeeper.out -covermode=atomic -timeout=10m
+	@scripts/check_unit.sh
 
 .PHONY: bdd-test
 bdd-test: generate-test-keys gatekeeper-docker
