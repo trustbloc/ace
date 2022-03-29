@@ -15,11 +15,11 @@ services:
       - GK_TLS_SERVE_CERT=/etc/tls/ec-pubCert.pem
       - GK_TLS_SERVE_KEY=/etc/tls/ec-key.pem
       - DATABASE_TYPE=mongodb
-      - DATABASE_URL=mongodb://mongodb.example.com:27017
+      - DATABASE_URL=mongodb://mongodb.trustbloc.local:27017
       - DATABASE_PREFIX=gatekeeper_
       - GK_VAULT_SERVER_URL=https://vault.trustbloc.local:${VAULT_SERVER_PORT}
-      - GK_VC_ISSUER_URL=https://vc-issuer.example.com:${ISSUER_VC_PORT}/vc-issuer-ucis
-      - GK_DID_RESOLVER_URL=http://did.resolver.example.com:${DID_RESOLVER_PORT}
+      - GK_VC_ISSUER_URL=http://vc-issuer.trustbloc.local:${ISSUER_VC_PORT}/vc-issuer-gk
+      - GK_BLOC_DOMAIN=orb.trustbloc.local
       - GK_VC_REQUEST_TOKENS=vcs_issuer=vcs_issuer_rw_token
       - LOG_LEVEL=debug
     ports:
@@ -28,9 +28,9 @@ services:
       - ./keys/tls:/etc/tls
     command: start
     depends_on:
-      - mongodb.example.com
-      - did.resolver.example.com
-      - vc-issuer.example.com
+      - mongodb.trustbloc.local
+      - did.resolver.trustbloc.local
+      - vc-issuer.trustbloc.local
     networks:
       - bdd_net
 
@@ -39,16 +39,16 @@ services:
     image: ${VAULT_SERVER_IMAGE}:${VAULT_SERVER_IMAGE_TAG}
     environment:
       - VAULT_HOST_URL=${VAULT_SERVER_HOST}:${VAULT_SERVER_PORT}
-      - VAULT_REMOTE_KMS_URL=https://vault.kms.example.com:${KMS_PORT}
-      - VAULT_EDV_URL=http://edv.trustbloc.local:8071/encrypted-data-vaults
+      - VAULT_REMOTE_KMS_URL=https://kms.trustbloc.local:${KMS_PORT}
+      - VAULT_EDV_URL=https://edv.trustbloc.local:8081/encrypted-data-vaults
       - VAULT_TLS_SYSTEMCERTPOOL=true
       - VAULT_TLS_CACERTS=/etc/tls/ec-cacert.pem
       - VAULT_TLS_SERVE_CERT=/etc/tls/ec-pubCert.pem
       - VAULT_TLS_SERVE_KEY=/etc/tls/ec-key.pem
-      - VAULT_DSN=mongodb://mongodb.example.com:27017
-      - VAULT_DID_DOMAIN=testnet.orb.local
+      - VAULT_DSN=mongodb://mongodb.trustbloc.local:27017
+      - VAULT_DID_DOMAIN=orb.trustbloc.local
       - VAULT_DID_METHOD=orb
-      - VAULT_DID_ANCHOR_ORIGIN=https://testnet.orb.local
+      - VAULT_DID_ANCHOR_ORIGIN=https://orb.trustbloc.local
       - VAULT_REQUEST_TOKENS=sidetreeToken=tk1
     ports:
       - ${VAULT_SERVER_PORT}:${VAULT_SERVER_PORT}
@@ -59,45 +59,100 @@ services:
     networks:
       - bdd_net
 
-  did.resolver.example.com:
-    container_name: did.rest.example.com
+  comparator.trustbloc.local:
+    container_name: comparator.trustbloc.local
+    image: ${COMPARATOR_REST_IMAGE}:${COMPARATOR_REST_IMAGE_TAG}
+    environment:
+      - COMPARATOR_HOST_URL=${COMPARATOR_REST_HOST}:${COMPARATOR_REST_PORT}
+      - COMPARATOR_TLS_SYSTEMCERTPOOL=true
+      - COMPARATOR_TLS_CACERTS=/etc/tls/ec-cacert.pem
+      - COMPARATOR_TLS_SERVE_CERT=/etc/tls/ec-pubCert.pem
+      - COMPARATOR_TLS_SERVE_KEY=/etc/tls/ec-key.pem
+      - COMPARATOR_DSN=mongodb://mongodb.trustbloc.local:${MONGODB_PORT}
+      - COMPARATOR_DID_DOMAIN=orb.trustbloc.local
+      - COMPARATOR_CSH_URL=https://hubstore.trustbloc.local:8095
+      - COMPARATOR_VAULT_URL=https://vault.trustbloc.local:${VAULT_SERVER_PORT}
+      - COMPARATOR_DID_ANCHOR_ORIGIN=https://orb.trustbloc.local
+      - COMPARATOR_REQUEST_TOKENS=sidetreeToken=tk1
+    ports:
+      - ${COMPARATOR_REST_PORT}:${COMPARATOR_REST_PORT}
+    entrypoint: ""
+    command: /bin/sh -c "sleep 5;comparator-rest start"
+    depends_on:
+      - hubstore.trustbloc.local
+      - mongodb.trustbloc.local
+      - orb.trustbloc.local
+    volumes:
+      - ./keys/tls:/etc/tls
+    networks:
+      - bdd_net
+
+  hubstore.trustbloc.local:
+    container_name: hubstore.trustbloc.local
+    image: ${CHS_REST_IMAGE}:${CHS_REST_IMAGE_TAG}
+    environment:
+      - CHS_HOST_URL=${CHS_REST_HOST}:${CHS_REST_PORT}
+      - CHS_TLS_SYSTEMCERTPOOL=true
+      - CHS_TLS_CACERTS=/etc/tls/ec-cacert.pem
+      - CHS_TLS_SERVE_CERT=/etc/tls/ec-pubCert.pem
+      - CHS_TLS_SERVE_KEY=/etc/tls/ec-key.pem
+      - DATABASE_URL=mongodb://mongodb.trustbloc.local:${MONGODB_PORT}
+      - DATABASE_PREFIX=confidentialstoragehub
+      - BASE_URL=https://hubstore.trustbloc.local
+      - TRUSTBLOC_DID_DOMAIN=orb.trustbloc.local
+      - IDENTITY_DID_METHOD=orb
+      - CHS_DID_ANCHOR_ORIGIN=https://orb.trustbloc.local
+      - CHS_REQUEST_TOKENS=sidetreeToken=tk1
+    ports:
+      - ${CHS_REST_PORT}:${CHS_REST_PORT}
+    command: start
+    depends_on:
+      - mongodb.trustbloc.local
+      - orb.trustbloc.local
+    volumes:
+      - ./keys/tls:/etc/tls
+    networks:
+      - bdd_net
+
+  did.resolver.trustbloc.local:
+    container_name: did.resolver.trustbloc.local
     image: ${DID_RESOLVER_IMAGE}:${DID_RESOLVER_IMAGE_TAG}
     environment:
-      - DID_RESOLVER_HOST_URL=${DID_RESOLVER_HOST}:${DID_RESOLVER_PORT}
-      - DID_RESOLVER_HOST_URL_EXTERNAL=http://did.resolver.example.com:${DID_RESOLVER_PORT}
-      - DID_RESOLVER_CONFIG_FILE=/opt/did-rest/config.json
-      - DID_RESOLVER_TLS_SYSTEMCERTPOOL=true
-      - DID_RESOLVER_TLS_CACERTS=/etc/tls/ec-cacert.pem
+      - DID_REST_HOST_URL=${DID_RESOLVER_HOST}:${DID_RESOLVER_PORT}
+      - DID_REST_HOST_URL_EXTERNAL=http://did.resolver.trustbloc.local:${DID_RESOLVER_PORT}
+      - DID_REST_CONFIG_FILE=/opt/did-rest/config.json
+      - DID_REST_TLS_SYSTEMCERTPOOL=true
+      - DID_REST_TLS_CACERTS=/etc/tls/ec-cacert.pem
     ports:
       - ${DID_RESOLVER_PORT}:${DID_RESOLVER_PORT}
-    command:  start
+    command: start
     volumes:
-      - ../keys/tls:/etc/tls
+      - ./keys/tls:/etc/tls
       - ./did-resolver/config.json:/opt/did-rest/config.json
     networks:
       - bdd_net
 
-  vc-issuer.example.com:
-    container_name: vc-issuer.example.com
+  vc-issuer.trustbloc.local:
+    container_name: vc-issuer.trustbloc.local
     image: ${ISSUER_VC_IMAGE}:${ISSUER_VC_IMAGE_TAG}
     environment:
       - VC_REST_HOST_URL=${ISSUER_VC_HOST}:${ISSUER_VC_PORT}
-      - VC_REST_HOST_URL_EXTERNAL=http://issuer.vc.rest.example.com:${ISSUER_VC_PORT}
-      - EDV_REST_HOST_URL=edv.trustbloc.local/encrypted-data-vaults
-      - BLOC_DOMAIN=testnet.orb.local
-      - UNIVERSAL_RESOLVER_HOST_URL=http://did.resolver.example.com:${DID_RESOLVER_PORT}
+      - VC_REST_HOST_URL_EXTERNAL=http://vc-issuer.trustbloc.local:${ISSUER_VC_PORT}
+      - EDV_REST_HOST_URL=https://edv.trustbloc.local:8081/encrypted-data-vaults
+      - BLOC_DOMAIN=orb.trustbloc.local
+      - UNIVERSAL_RESOLVER_HOST_URL=http://did.resolver.trustbloc.local:${DID_RESOLVER_PORT}/1.0/identifiers
       - DATABASE_TYPE=mongodb
-      - DATABASE_URL=mongodb://mongodb.example.com:${MONGODB_PORT}
+      - DATABASE_URL=mongodb://mongodb.trustbloc.local:${MONGODB_PORT}
       - DATABASE_PREFIX=issuer_
       - KMSSECRETS_DATABASE_TYPE=mongodb
-      - KMSSECRETS_DATABASE_URL=mongodb://mongodb.example.com:${MONGODB_PORT}
+      - KMSSECRETS_DATABASE_URL=mongodb://mongodb.trustbloc.local:${MONGODB_PORT}
       - KMSSECRETS_DATABASE_PREFIX=issuer_
       - VC_REST_MODE=issuer
       - VC_REST_TLS_CACERTS=/etc/tls/ec-cacert.pem
       - VC_REST_TLS_SYSTEMCERTPOOL=true
-      - VC_REST_API_TOKEN=rw_token
+      - VC_REST_API_TOKEN=vcs_issuer_rw_token
       - VC_REST_REQUEST_TOKENS=csl=rw_token,sidetreeToken=tk1
-      - VC_REST_DID_ANCHOR_ORIGIN=https://testnet.orb.local
+      - VC_REST_DID_ANCHOR_ORIGIN=https://orb.trustbloc.local
       - VC_REST_CONTEXT_PROVIDER_URL=${CONTEXT_PROVIDER_URL}
     ports:
       - ${ISSUER_VC_PORT}:${ISSUER_VC_PORT}
@@ -108,31 +163,48 @@ services:
     networks:
       - bdd_net
 
+  file-server.trustbloc.local: # file server for hosting static resources (e.g. JSON-LD contexts)
+    container_name: file-server.trustbloc.local
+    image: halverneus/static-file-server:latest
+    environment:
+      - PORT=10096
+      - FOLDER=/data
+      - TLS_CERT=/etc/tls/ec-pubCert.pem
+      - TLS_KEY=/etc/tls/ec-key.pem
+    ports:
+      - "10096:10096"
+    volumes:
+      - ./file-server:/data
+      - ./keys/tls:/etc/tls
+    networks:
+      - bdd_net
+
   kms.trustbloc.local:
     container_name: kms.trustbloc.local
     image: ${KMS_SERVER_IMAGE}:${KMS_SERVER_IMAGE_TAG}
     environment:
-      - KMS_HOST=0.0.0.0:8074
-      - KMS_BASE_URL=https://kms.trustbloc.local:8076
+      - KMS_HOST=0.0.0.0:${KMS_PORT}
+      - KMS_BASE_URL=https://kms.trustbloc.local:${KMS_PORT}
       - KMS_TLS_CACERTS=/etc/tls/ec-cacert.pem
       - KMS_TLS_SERVE_CERT=/etc/tls/ec-pubCert.pem
       - KMS_TLS_SERVE_KEY=/etc/tls/ec-key.pem
       - KMS_DATABASE_TYPE=mongodb
-      - KMS_DATABASE_URL=mongodb://mongodb.example.com:27017
+      - KMS_DATABASE_URL=mongodb://mongodb.trustbloc.local:27017
       - KMS_DATABASE_PREFIX=kms_
       - KMS_CACHE_ENABLE=true
       - KMS_ZCAP_ENABLE=true
       - KMS_LOG_LEVEL=debug
       - KMS_SECRET_LOCK_TYPE=local
       - KMS_SECRET_LOCK_KEY_PATH=/etc/tls/secret-lock.key
+      - KMS_DID_DOMAIN=orb.trustbloc.local
     ports:
-      - "8074:8074"
+      - ${KMS_PORT}:${KMS_PORT}
       - "48831:48831"
     volumes:
       - ./keys/tls:/etc/tls
     command: start
     depends_on:
-      - mongodb.example.com
+      - mongodb.trustbloc.local
       - edv.trustbloc.local
     networks:
       - bdd_net
@@ -142,15 +214,17 @@ services:
     image: ${EDV_REST_IMAGE}:${EDV_REST_IMAGE_TAG}
     environment:
       - EDV_HOST_URL=0.0.0.0:8081
+      - EDV_TLS_CACERTS=/etc/tls/ec-cacert.pem
       - EDV_TLS_CERT_FILE=/etc/tls/ec-pubCert.pem
       - EDV_TLS_KEY_FILE=/etc/tls/ec-key.pem
       - EDV_DATABASE_TYPE=mongodb
-      - EDV_DATABASE_URL=mongodb://mongodb.example.com:27017
+      - EDV_DATABASE_URL=mongodb://mongodb.trustbloc.local:27017
       - EDV_DATABASE_PREFIX=edv_
       - EDV_LOCALKMS_SECRETS_DATABASE_TYPE=mongodb
-      - EDV_LOCALKMS_SECRETS_DATABASE_URL=mongodb://mongodb.example.com:27017
+      - EDV_LOCALKMS_SECRETS_DATABASE_URL=mongodb://mongodb.trustbloc.local:27017
       - EDV_LOCALKMS_SECRETS_DATABASE_PREFIX=edv_kms_
       - EDV_EXTENSIONS=ReturnFullDocumentsOnQuery,Batch
+      - EDV_DID_DOMAIN=orb.trustbloc.local
       - EDV_DATABASE_TIMEOUT=60
       - EDV_AUTH_ENABLE=true
       - EDV_LOG_LEVEL=debug
@@ -160,12 +234,80 @@ services:
       - ./keys/tls:/etc/tls
     command: start
     depends_on:
-      - mongodb.example.com
+      - mongodb.trustbloc.local
     networks:
       - bdd_net
 
-  mongodb.example.com:
-    container_name: mongodb.example.com
+  orb.trustbloc.local:
+    container_name: orb.trustbloc.local
+    image: ${SIDETREE_MOCK_IMAGE}:${SIDETREE_MOCK_IMAGE_TAG}
+    environment:
+      - SIDETREE_MOCK_TLS_CERTIFICATE=/etc/sidetree/tls/ec-pubCert.pem
+      - SIDETREE_MOCK_TLS_KEY=/etc/sidetree/tls/ec-key.pem
+      - SIDETREE_MOCK_HOST=0.0.0.0
+      - SIDETREE_MOCK_PORT=443
+      - SIDETREE_MOCK_DID_NAMESPACE=did:orb
+      - SIDETREE_MOCK_DID_ALIASES=did:orb:orb.trustbloc.local
+      - SIDETREE_MOCK_EXTERNAL_ENDPOINT=https://orb.trustbloc.local
+      - SIDETREE_MOCK_WELLKNOWN_PATH=did-orb
+    ports:
+      - 443:443
+    volumes:
+      - ./keys/tls:/etc/sidetree/tls
+    networks:
+      - bdd_net
+
+
+  uni-resolver-web:
+    container_name: uni-resolver-web
+    image: universalresolver/uni-resolver-web:latest
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./universalresolver/config.json:/opt/uni-resolver-java/uni-resolver-web/config.json
+      - ./universalresolver/run-uni-resolver-web.sh:/opt/uni-resolver-java/uni-resolver-web/docker/run-uni-resolver-web.sh
+    networks:
+      - bdd_net
+
+  driver-did-sov:
+    container_name: driver-did-sov
+    image: universalresolver/driver-did-sov:latest
+    environment:
+      uniresolver_driver_did_sov_libIndyPath: ${uniresolver_driver_did_sov_libIndyPath}
+      uniresolver_driver_did_sov_poolConfigs: ${uniresolver_driver_did_sov_poolConfigs}
+      uniresolver_driver_did_sov_poolVersions: ${uniresolver_driver_did_sov_poolVersions}
+      uniresolver_driver_did_sov_walletName: ${uniresolver_driver_did_sov_walletName}
+    ports:
+      - "8082:8080"
+    networks:
+      - bdd_net
+
+  uni-resolver-driver-did-uport:
+    container_name: uni-resolver-driver-did-uport
+    image: uport/uni-resolver-driver-did-uport:1.3.1
+    ports:
+      - "8083:8081"
+    networks:
+      - bdd_net
+
+  uni-resolver-did-v1-driver:
+    container_name: uni-resolver-did-v1-driver
+    image: veresone/uni-resolver-did-v1-driver:latest
+    ports:
+      - "8085:8080"
+    networks:
+      - bdd_net
+
+  driver-did-factom:
+    container_name: driver-did-factom
+    image: sphereon/driver-did-factom:latest
+    ports:
+      - "8097:8080"
+    networks:
+      - bdd_net
+
+  mongodb.trustbloc.local:
+    container_name: mongodb.trustbloc.local
     image: ${MONGODB_IMAGE}:${MONGODB_IMAGE_TAG}
     ports:
       - ${MONGODB_PORT}:${MONGODB_PORT}

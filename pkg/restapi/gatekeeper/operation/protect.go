@@ -153,12 +153,7 @@ func (o *protectOperation) saveVCDoc(vaultID string, vc *verifiable.Credential) 
 		return "", fmt.Errorf("create edv doc id : %w", err)
 	}
 
-	bytes, err := vc.MarshalJSON()
-	if err != nil {
-		return "", fmt.Errorf("failed to save doc, marshal json failed : %w", err)
-	}
-
-	_, err = o.vaultClient.SaveDoc(vaultID, docID, bytes)
+	_, err = o.vaultClient.SaveDoc(vaultID, docID, vc)
 	if err != nil {
 		return "", fmt.Errorf("failed to save doc : %w", err)
 	}
