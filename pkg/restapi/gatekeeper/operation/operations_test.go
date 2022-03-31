@@ -21,12 +21,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation"
-	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation/models"
 	"github.com/trustbloc/ace/pkg/restapi/model"
 )
 
 func TestProtectHandler(t *testing.T) {
-	req := &models.ProtectReq{
+	req := &operation.ProtectRequest{
 		Policy: "10",
 		Target: "test ssn",
 	}
@@ -35,11 +34,11 @@ func TestProtectHandler(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		protectOp := NewMockProtectOperation(ctrl)
-		protectOp.EXPECT().ProtectOp(gomock.Any()).Return(&models.ProtectResp{}, nil)
+		protectSvc := NewMockProtectService(ctrl)
+		protectSvc.EXPECT().Protect(gomock.Any(), gomock.Any(), gomock.Any()).Return("did", nil)
 
 		op := &operation.Operation{
-			ProtectOperation: protectOp,
+			ProtectSvc: protectSvc,
 		}
 
 		body, err := json.Marshal(req)
@@ -59,14 +58,16 @@ func TestProtectHandler(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, rr.Code)
 	})
 
-	t.Run("protect op failed", func(t *testing.T) {
+	t.Run("Fail to protect data", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		protectOp := NewMockProtectOperation(ctrl)
-		protectOp.EXPECT().ProtectOp(gomock.Any()).Return(nil, errors.New("protect op failed"))
+		protectSvc := NewMockProtectService(ctrl)
+		protectSvc.EXPECT().Protect(gomock.Any(), gomock.Any(), gomock.Any()).
+			Return("", errors.New("protect failed"))
+
 		op := &operation.Operation{
-			ProtectOperation: protectOp,
+			ProtectSvc: protectSvc,
 		}
 
 		body, err := json.Marshal(req)

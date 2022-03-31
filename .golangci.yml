@@ -96,6 +96,7 @@ linters:
     - tagliatelle
     - maintidx
     - golint # deprecated
+    - ireturn # TODO: enable after that linter starts working correctly
 
 issues:
   exclude-use-default: false

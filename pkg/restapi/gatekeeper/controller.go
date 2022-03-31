@@ -12,19 +12,19 @@ import (
 
 	"github.com/trustbloc/ace/pkg/client/vault"
 	"github.com/trustbloc/ace/pkg/internal/common/support"
+	"github.com/trustbloc/ace/pkg/protect"
 	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation"
-	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation/protectop"
 	"github.com/trustbloc/ace/pkg/store/policy"
 	"github.com/trustbloc/ace/pkg/store/protecteddata"
-	"github.com/trustbloc/ace/pkg/vc"
+	"github.com/trustbloc/ace/pkg/vcissuer"
 )
 
 // Config defines configuration for Gatekeeper operations.
 type Config struct {
 	StorageProvider storage.Provider
 	VaultClient     vault.Vault
-	VDRI            vdrapi.Registry
-	VCIssuer        *vc.Issuer
+	VDR             vdrapi.Registry
+	VCIssuer        *vcissuer.Service
 }
 
 // New returns new controller instance.
@@ -39,16 +39,16 @@ func New(config *Config) (*Controller, error) {
 		return nil, err
 	}
 
-	protectOp := protectop.NewProtectOp(&protectop.ProtectConfig{
+	protectSvc := protect.NewService(&protect.Config{
 		Store:       protectedDataStore,
 		VaultClient: config.VaultClient,
-		VDRI:        config.VDRI,
+		VDR:         config.VDR,
 		VCIssuer:    config.VCIssuer,
 	})
 
 	ops := &operation.Operation{
-		ProtectOperation: protectOp,
-		PolicyStore:      policyStore,
+		ProtectSvc:  protectSvc,
+		PolicyStore: policyStore,
 	}
 
 	return &Controller{handlers: ops.GetRESTHandlers()}, nil

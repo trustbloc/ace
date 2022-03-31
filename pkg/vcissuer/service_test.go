@@ -4,10 +4,10 @@ Copyright SecureKey Technologies Inc. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package vc_test
+package vcissuer_test
 
 import (
-	"fmt"
+	"context"
 	"io"
 	"net/http"
 	"strings"
@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/ace/cmd/common"
-	"github.com/trustbloc/ace/pkg/vc"
+	"github.com/trustbloc/ace/pkg/vcissuer"
 )
 
 //nolint:lll
@@ -61,14 +61,12 @@ func TestIssueCredential_HTTPFail(t *testing.T) {
 
 	httpClient.EXPECT().Do(gomock.Any()).Return(nil, errors.New("request failed"))
 
-	vcIssuer := vc.New(&vc.Config{
-		VCIssuerURL:    "",
-		DocumentLoader: nil,
-		HTTPClient:     httpClient,
+	vcIssuer := vcissuer.New(&vcissuer.Config{
+		VCIssuerURL: "",
+		HTTPClient:  httpClient,
 	})
 
-	_, err := vcIssuer.IssueCredential([]byte{})
-
+	_, err := vcIssuer.IssueCredential(context.Background(), []byte{})
 	require.Contains(t, err.Error(), "request failed")
 }
 
@@ -83,15 +81,15 @@ func TestIssueCredential_VCParseError(t *testing.T) {
 		StatusCode: http.StatusCreated,
 	}, nil)
 
-	vcIssuer := vc.New(&vc.Config{
+	vcIssuer := vcissuer.New(&vcissuer.Config{
 		VCIssuerURL:    "http://base-url",
 		AuthToken:      "auth-token",
 		DocumentLoader: nil,
 		HTTPClient:     httpClient,
 	})
 
-	_, err := vcIssuer.IssueCredential([]byte{})
-	require.Contains(t, err.Error(), "parse vc : unmarshal new credential")
+	_, err := vcIssuer.IssueCredential(context.Background(), []byte{})
+	require.Contains(t, err.Error(), "parse vc: unmarshal new credential")
 }
 
 func TestIssueCredential_Success(t *testing.T) {
@@ -101,8 +99,6 @@ func TestIssueCredential_Success(t *testing.T) {
 	httpClient := NewMockHTTPClient(ctrl)
 
 	httpClient.EXPECT().Do(gomock.Any()).Do(func(req *http.Request) {
-		fmt.Printf("SSSSSSSSSSSSSSSSs")
-
 		require.Equal(t, req.URL.Host, "base-url")
 
 		authTokens := req.Header["Authorization"]
@@ -119,14 +115,14 @@ func TestIssueCredential_Success(t *testing.T) {
 	documentLoader, err := common.CreateJSONLDDocumentLoader(ldStore, httpClient, nil)
 	require.NoError(t, err)
 
-	vcIssuer := vc.New(&vc.Config{
+	vcIssuer := vcissuer.New(&vcissuer.Config{
 		VCIssuerURL:    "http://base-url",
 		AuthToken:      "auth-token",
 		DocumentLoader: documentLoader,
 		HTTPClient:     httpClient,
 	})
 
-	cred, err := vcIssuer.IssueCredential([]byte{})
+	cred, err := vcIssuer.IssueCredential(context.Background(), []byte{})
 	require.NoError(t, err)
 	require.NotNil(t, cred)
 }
