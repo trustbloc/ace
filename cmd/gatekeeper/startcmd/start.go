@@ -28,7 +28,7 @@ import (
 	vaultclient "github.com/trustbloc/ace/pkg/client/vault"
 	"github.com/trustbloc/ace/pkg/restapi/gatekeeper"
 	"github.com/trustbloc/ace/pkg/restapi/healthcheck"
-	"github.com/trustbloc/ace/pkg/vc"
+	"github.com/trustbloc/ace/pkg/vcissuer"
 )
 
 const (
@@ -289,7 +289,7 @@ func startService(params *serviceParameters, srv server) error { // nolint: funl
 		TLSClientConfig: tlsConfig,
 	}}
 
-	vdri, err := createVDRI(params.didResolverURL, params.blocDomain, httpClient)
+	vdr, err := createVDR(params.didResolverURL, params.blocDomain, httpClient)
 	if err != nil {
 		return err
 	}
@@ -306,7 +306,7 @@ func startService(params *serviceParameters, srv server) error { // nolint: funl
 
 	vClient := vaultclient.New(params.vaultServerURL, vaultclient.WithHTTPClient(httpClient))
 
-	vcProvider := vc.New(&vc.Config{
+	vcIssuer := vcissuer.New(&vcissuer.Config{
 		VCIssuerURL:    params.vcIssuerURL,
 		AuthToken:      params.vcRequestTokens[vcsIssuerRequestTokenName],
 		DocumentLoader: documentLoader,
@@ -316,8 +316,8 @@ func startService(params *serviceParameters, srv server) error { // nolint: funl
 	service, err := gatekeeper.New(&gatekeeper.Config{
 		StorageProvider: storeProvider,
 		VaultClient:     vClient,
-		VDRI:            vdri,
-		VCIssuer:        vcProvider,
+		VDR:             vdr,
+		VCIssuer:        vcIssuer,
 	})
 	if err != nil {
 		return err
@@ -368,7 +368,7 @@ func getVCRequestTokens(cmd *cobra.Command) (map[string]string, error) {
 	return tokens, nil
 }
 
-func createVDRI(didResolverURL, blocDomain string, httpClient *http.Client) (vdrapi.Registry, error) { //nolint:ireturn
+func createVDR(didResolverURL, blocDomain string, httpClient *http.Client) (vdrapi.Registry, error) { //nolint:ireturn
 	var opts []vdrpkg.Option
 
 	if didResolverURL != "" {

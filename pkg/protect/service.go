@@ -4,12 +4,13 @@ Copyright SecureKey Technologies Inc. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package protectop
+package protect
 
 //nolint: lll
-//go:generate mockgen -destination gomocks_test.go -package protectop_test -source=protectop.go -mock_names vaultClient=MockVault,vdrRegistry=MockVDRIRegistry,storage=MockProtectedDataStore,vcProvider=MockVCProvider
+//go:generate mockgen -destination gomocks_test.go -package protect_test -source=service.go -mock_names vaultClient=MockVault,vdrRegistry=MockVDRRegistry,storage=MockStore,vcIssuer=MockVCIssuer
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"hash/fnv"
@@ -23,10 +24,8 @@ import (
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdr"
 	"github.com/trustbloc/edv/pkg/edvutils"
 
-	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation/models"
 	"github.com/trustbloc/ace/pkg/restapi/model"
 	"github.com/trustbloc/ace/pkg/restapi/vault"
-	"github.com/trustbloc/ace/pkg/store/protecteddata"
 )
 
 const (
@@ -49,89 +48,89 @@ type storage interface {
 }
 
 type vcIssuer interface {
-	IssueCredential(credBytes []byte) (*verifiable.Credential, error)
+	IssueCredential(ctx context.Context, cred []byte) (*verifiable.Credential, error)
 }
 
-// ProtectConfig defines external services used by protect ops.
-type ProtectConfig struct {
+// Config defines configuration options for Service.
+type Config struct {
 	Store       storage
 	VaultClient vaultClient
-	VDRI        vdrRegistry
+	VDR         vdrRegistry
 	VCIssuer    vcIssuer
 }
 
-// ProtectOperation implements protect operation.
-type ProtectOperation struct {
-	store       protecteddata.Storage
+// Service is a service for converting sensitive data into DID.
+type Service struct {
+	store       storage
 	vaultClient vaultClient
-	vdri        vdrRegistry
+	vdr         vdrRegistry
 	issuer      vcIssuer
 }
 
-// NewProtectOp creates new ProtectOperation.
-func NewProtectOp(config *ProtectConfig) *ProtectOperation {
-	return &ProtectOperation{
+// NewService creates a new instance of protect.Service.
+func NewService(config *Config) *Service {
+	return &Service{
 		store:       config.Store,
 		vaultClient: config.VaultClient,
-		vdri:        config.VDRI,
+		vdr:         config.VDR,
 		issuer:      config.VCIssuer,
 	}
 }
 
-// ProtectOp protect data and returns opaque did for it.
-func (o *ProtectOperation) ProtectOp(req *models.ProtectReq) (*models.ProtectResp, error) {
-	hash, err := calculateDataHash(req.Target)
+// Protect converts target into DID.
+func (s *Service) Protect(ctx context.Context, target, policyID string) (string, error) {
+	hash, err := calculateHash(target)
 	if err != nil {
-		return nil, err
+		return "", fmt.Errorf("calculate hash: %w", err)
 	}
 
-	data, err := o.store.Get(hash)
+	data, err := s.store.Get(hash)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	if data != nil {
-		return &models.ProtectResp{Did: data.DID}, nil
+		return data.DID, nil
 	}
 
-	vaultData, err := o.vaultClient.CreateVault()
+	vaultData, err := s.vaultClient.CreateVault()
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 
 	vaultID := vaultData.ID
 
-	vc, err := o.wrapDataIntoVC(vaultID, req.Target)
+	vc, err := s.wrapDataIntoVC(ctx, vaultID, target)
 	if err != nil {
-		return nil, fmt.Errorf("wrap data into vc: %w", err)
+		return "", fmt.Errorf("wrap data into vc: %w", err)
 	}
 
 	// resolve DID
-	err = resolveDID(o.vdri, vaultID, resolveMaxRetry)
+	err = resolveDID(s.vdr, vaultID, resolveMaxRetry)
 	if err != nil {
-		return nil, fmt.Errorf("resolve did %s : %w", vaultID, err)
+		return "", fmt.Errorf("resolve did %s : %w", vaultID, err)
 	}
 
-	targetVCDocID, err := o.saveVCDoc(vaultID, vc)
+	vcDocID, err := s.saveVCDoc(vaultID, vc)
 	if err != nil {
-		return nil, fmt.Errorf("save vc doc: %w", err)
+		return "", fmt.Errorf("save vc doc: %w", err)
 	}
 
-	err = o.store.Put(&model.ProtectedData{
-		PolicyID:      req.Policy,
+	err = s.store.Put(&model.ProtectedData{
+		PolicyID:      policyID,
 		Hash:          hash,
 		DID:           vaultID,
-		TargetVCDocID: targetVCDocID,
+		TargetVCDocID: vcDocID,
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("save sensitive data: %w", err)
+		return "", fmt.Errorf("save protected data: %w", err)
 	}
 
-	return &models.ProtectResp{Did: vaultID}, nil
+	return vaultID, nil
 }
 
-func (o *ProtectOperation) wrapDataIntoVC(sub, data string) (*verifiable.Credential, error) {
+func (s *Service) wrapDataIntoVC(ctx context.Context, sub, data string) (*verifiable.Credential, error) {
 	if data == "" {
 		return nil, errors.New("data is mandatory")
 	}
@@ -155,7 +154,7 @@ func (o *ProtectOperation) wrapDataIntoVC(sub, data string) (*verifiable.Credent
 		return nil, fmt.Errorf("marshal credential: %w", err)
 	}
 
-	vc, err := o.issuer.IssueCredential(credBytes)
+	vc, err := s.issuer.IssueCredential(ctx, credBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -163,13 +162,13 @@ func (o *ProtectOperation) wrapDataIntoVC(sub, data string) (*verifiable.Credent
 	return vc, nil
 }
 
-func (o *ProtectOperation) saveVCDoc(vaultID string, vc *verifiable.Credential) (string, error) {
+func (s *Service) saveVCDoc(vaultID string, vc *verifiable.Credential) (string, error) {
 	docID, err := edvutils.GenerateEDVCompatibleID()
 	if err != nil {
 		return "", fmt.Errorf("create edv doc id : %w", err)
 	}
 
-	_, err = o.vaultClient.SaveDoc(vaultID, docID, vc)
+	_, err = s.vaultClient.SaveDoc(vaultID, docID, vc)
 	if err != nil {
 		return "", fmt.Errorf("failed to save doc : %w", err)
 	}
@@ -177,11 +176,11 @@ func (o *ProtectOperation) saveVCDoc(vaultID string, vc *verifiable.Credential) 
 	return docID, nil
 }
 
-func calculateDataHash(data string) (string, error) {
+func calculateHash(data string) (string, error) {
 	h := fnv.New128()
 
 	if _, err := h.Write([]byte(data)); err != nil {
-		return "", fmt.Errorf("calculate sensitive data hash fail: %w", err)
+		return "", fmt.Errorf("calculate data hash: %w", err)
 	}
 
 	return string(h.Sum(nil)), nil

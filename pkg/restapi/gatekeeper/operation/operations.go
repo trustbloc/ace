@@ -7,9 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package operation
 
 //nolint:lll
-//go:generate mockgen -destination gomocks_test.go -package operation_test -source=operations.go -mock_names protectOperation=MockProtectOperation,policyStore=MockPolicyStore
+//go:generate mockgen -destination gomocks_test.go -package operation_test -source=operations.go -mock_names protectService=MockProtectService,policyStore=MockPolicyStore
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -19,21 +20,9 @@ import (
 	"github.com/hyperledger/aries-framework-go/pkg/common/log"
 
 	"github.com/trustbloc/ace/pkg/internal/common/support"
-	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation/models"
 	"github.com/trustbloc/ace/pkg/restapi/model"
 )
 
-type protectOperation interface {
-	ProtectOp(req *models.ProtectReq) (*models.ProtectResp, error)
-}
-
-type policyStore interface {
-	Put(policyID string, doc *model.PolicyDocument) error
-}
-
-var logger = log.New("gatekeeper")
-
-// API endpoints.
 const (
 	policyIDVarName = "policy_id"
 	baseV1Path      = "/v1"
@@ -41,10 +30,20 @@ const (
 	policyEndpoint  = baseV1Path + "/policy/{" + policyIDVarName + "}"
 )
 
+var logger = log.New("gatekeeper")
+
+type protectService interface {
+	Protect(ctx context.Context, target, policyID string) (string, error)
+}
+
+type policyStore interface {
+	Put(policyID string, doc *model.PolicyDocument) error
+}
+
 // Operation defines handlers for rp operations.
 type Operation struct {
-	ProtectOperation protectOperation
-	PolicyStore      policyStore
+	ProtectSvc  protectService
+	PolicyStore policyStore
 }
 
 // GetRESTHandlers get all controller API handler available for this service.
@@ -56,23 +55,23 @@ func (o *Operation) GetRESTHandlers() []support.Handler {
 }
 
 func (o *Operation) protectHandler(rw http.ResponseWriter, r *http.Request) {
-	req := &models.ProtectReq{}
+	var req ProtectRequest
 
-	err := json.NewDecoder(r.Body).Decode(req)
+	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		respondError(rw, http.StatusBadRequest, err)
 
 		return
 	}
 
-	response, err := o.ProtectOperation.ProtectOp(req)
+	did, err := o.ProtectSvc.Protect(r.Context(), req.Target, req.Policy)
 	if err != nil {
 		respondError(rw, http.StatusInternalServerError, err)
 
 		return
 	}
 
-	respond(rw, http.StatusOK, response)
+	respond(rw, http.StatusOK, &ProtectResponse{DID: did})
 }
 
 func (o *Operation) createPolicyHandler(rw http.ResponseWriter, r *http.Request) {
@@ -104,7 +103,7 @@ func respond(w http.ResponseWriter, statusCode int, payload interface{}) {
 
 	if payload != nil {
 		if err := json.NewEncoder(w).Encode(payload); err != nil {
-			logger.Errorf("failed to write response: %s", err.Error())
+			logger.Errorf("Failed to write response: %s", err.Error())
 		}
 	}
 }
@@ -119,6 +118,6 @@ func respondError(w http.ResponseWriter, statusCode int, err error) {
 	w.WriteHeader(statusCode)
 
 	if encErr := json.NewEncoder(w).Encode(&model.ErrorResponse{Message: errorMessage}); encErr != nil {
-		logger.Errorf("failed to write error response: %s", err.Error())
+		logger.Errorf("Failed to write error response: %s", err.Error())
 	}
 }
