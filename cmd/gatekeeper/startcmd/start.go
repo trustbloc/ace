@@ -27,9 +27,8 @@ import (
 	"github.com/trustbloc/ace/cmd/common"
 	vaultclient "github.com/trustbloc/ace/pkg/client/vault"
 	"github.com/trustbloc/ace/pkg/restapi/gatekeeper"
-	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation"
-	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation/vcprovider"
 	"github.com/trustbloc/ace/pkg/restapi/healthcheck"
+	"github.com/trustbloc/ace/pkg/vc"
 )
 
 const (
@@ -83,7 +82,7 @@ const (
 
 	// vc issuer server url.
 	vcIssuerURLFlagName  = "vc-issuer-url"
-	vcIssuerURLFlagUsage = "URL of the VC Issuer service. This field is mandatory."
+	vcIssuerURLFlagUsage = "URL of the VC VCIssuer service. This field is mandatory."
 	vcIssuerURLEnvKey    = "GK_VC_ISSUER_URL"
 
 	vcRequestTokensFlagName  = "vc-request-tokens"
@@ -91,7 +90,8 @@ const (
 	vcRequestTokensFlagUsage = "Tokens used for http request to vc issuer" +
 		" Alternatively, this can be set with the following environment variable: " + vcRequestTokensEnvKey
 
-	tokenLength2 = 2
+	tokenLength2              = 2
+	vcsIssuerRequestTokenName = "vcs_issuer"
 )
 
 var logger = log.New("gatekeeper-rest")
@@ -306,18 +306,18 @@ func startService(params *serviceParameters, srv server) error { // nolint: funl
 
 	vClient := vaultclient.New(params.vaultServerURL, vaultclient.WithHTTPClient(httpClient))
 
-	vcProvider := vcprovider.New(&vcprovider.Config{
-		VCIssuerURL:     params.vcIssuerURL,
-		VCRequestTokens: params.vcRequestTokens,
-		DocumentLoader:  documentLoader,
-		HTTPClient:      httpClient,
+	vcProvider := vc.New(&vc.Config{
+		VCIssuerURL:    params.vcIssuerURL,
+		AuthToken:      params.vcRequestTokens[vcsIssuerRequestTokenName],
+		DocumentLoader: documentLoader,
+		HTTPClient:     httpClient,
 	})
 
-	service, err := gatekeeper.New(&operation.Config{
+	service, err := gatekeeper.New(&gatekeeper.Config{
 		StorageProvider: storeProvider,
 		VaultClient:     vClient,
 		VDRI:            vdri,
-		VCProvider:      vcProvider,
+		VCIssuer:        vcProvider,
 	})
 	if err != nil {
 		return err

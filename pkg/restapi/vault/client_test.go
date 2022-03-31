@@ -841,7 +841,7 @@ func TestClient_GetDocMetadata(t *testing.T) {
 
 const keystorePrimaryKeyURI = "local-lock://kms"
 
-func newLocalKms(t *testing.T, db storage.Provider) vault.KeyManager { //nolint:ireturn
+func newLocalKms(t *testing.T, db storage.Provider) vault.KeyManager { //nolint:ireturn,nolintlint
 	t.Helper()
 
 	keyManager, err := localkms.New(keystorePrimaryKeyURI, &kmsProvider{

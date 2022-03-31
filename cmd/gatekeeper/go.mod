@@ -11,6 +11,7 @@ replace github.com/trustbloc/ace => ../..
 require (
 	github.com/gorilla/mux v1.8.0
 	github.com/hyperledger/aries-framework-go v0.1.8-0.20220311181400-584f96318d6d
+	github.com/hyperledger/aries-framework-go-ext/component/vdr/orb v0.1.4-0.20220314131033-2c80f2db01c9
 	github.com/rs/cors v1.8.2
 	github.com/spf13/cobra v1.3.0
 	github.com/stretchr/testify v1.7.0
@@ -38,6 +39,7 @@ require (
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
+	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/certificate-transparency-go v1.1.2-0.20210512142713-bed466244fa6 // indirect
@@ -47,7 +49,6 @@ require (
 	github.com/hyperledger/aries-framework-go-ext/component/storage/couchdb v0.0.0-20220310013829-55b4443130f8 // indirect
 	github.com/hyperledger/aries-framework-go-ext/component/storage/mongodb v0.0.0-20220310013829-55b4443130f8 // indirect
 	github.com/hyperledger/aries-framework-go-ext/component/storage/mysql v0.0.0-20220310013829-55b4443130f8 // indirect
-	github.com/hyperledger/aries-framework-go-ext/component/vdr/orb v0.1.4-0.20220314131033-2c80f2db01c9 // indirect
 	github.com/hyperledger/aries-framework-go-ext/component/vdr/sidetree v0.0.0-20220303174620-e3a8602acbee // indirect
 	github.com/hyperledger/aries-framework-go/component/storageutil v0.0.0-20220310104637-62fd90482e21 // indirect
 	github.com/hyperledger/aries-framework-go/spi v0.0.0-20220310104637-62fd90482e21 // indirect

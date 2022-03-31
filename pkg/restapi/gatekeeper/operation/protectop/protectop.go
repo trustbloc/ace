@@ -4,7 +4,10 @@ Copyright SecureKey Technologies Inc. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package operation
+package protectop
+
+//nolint: lll
+//go:generate mockgen -destination gomocks_test.go -package protectop_test -source=protectop.go -mock_names vaultClient=MockVault,vdrRegistry=MockVDRIRegistry,storage=MockProtectedDataStore,vcProvider=MockVCProvider
 
 import (
 	"errors"
@@ -14,15 +17,15 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/util"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/verifiable"
-	vdrapi "github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdr"
+	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdr"
 	"github.com/trustbloc/edv/pkg/edvutils"
 
-	"github.com/trustbloc/ace/pkg/client/vault"
 	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation/models"
-	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation/vcprovider"
 	"github.com/trustbloc/ace/pkg/restapi/model"
+	"github.com/trustbloc/ace/pkg/restapi/vault"
 	"github.com/trustbloc/ace/pkg/store/protecteddata"
 )
 
@@ -31,38 +34,52 @@ const (
 	resolveMaxRetry   = 10
 )
 
+type vaultClient interface {
+	CreateVault() (*vault.CreatedVault, error)
+	SaveDoc(vaultID, id string, content interface{}) (*vault.DocumentMetadata, error)
+}
+
+type vdrRegistry interface {
+	Resolve(DID string, opts ...vdr.DIDMethodOption) (*did.DocResolution, error)
+}
+
+type storage interface {
+	Get(hash string) (*model.ProtectedData, error)
+	Put(data *model.ProtectedData) error
+}
+
+type vcIssuer interface {
+	IssueCredential(credBytes []byte) (*verifiable.Credential, error)
+}
+
 // ProtectConfig defines external services used by protect ops.
 type ProtectConfig struct {
-	Store       protecteddata.Storage
-	VaultClient vault.Vault
-	VDRI        vdrapi.Registry
-	VCProvider  vcprovider.Provider
+	Store       storage
+	VaultClient vaultClient
+	VDRI        vdrRegistry
+	VCIssuer    vcIssuer
 }
 
-// ProtectOperation defines the interface for protect ops.
-type ProtectOperation interface {
-	ProtectOp(req *models.ProtectReq) (*models.ProtectResp, error)
-}
-
-// protectOperation implements protect operation.
-type protectOperation struct {
+// ProtectOperation implements protect operation.
+type ProtectOperation struct {
 	store       protecteddata.Storage
-	vaultClient vault.Vault
-	vdri        vdrapi.Registry
-	vcProvider  vcprovider.Provider
+	vaultClient vaultClient
+	vdri        vdrRegistry
+	issuer      vcIssuer
 }
 
 // NewProtectOp creates new ProtectOperation.
-func NewProtectOp(config *ProtectConfig) ProtectOperation { //nolint:ireturn
-	return &protectOperation{
+func NewProtectOp(config *ProtectConfig) *ProtectOperation {
+	return &ProtectOperation{
 		store:       config.Store,
 		vaultClient: config.VaultClient,
 		vdri:        config.VDRI,
-		vcProvider:  config.VCProvider,
+		issuer:      config.VCIssuer,
 	}
 }
 
-func (o *protectOperation) ProtectOp(req *models.ProtectReq) (*models.ProtectResp, error) {
+// ProtectOp protect data and returns opaque did for it.
+func (o *ProtectOperation) ProtectOp(req *models.ProtectReq) (*models.ProtectResp, error) {
 	hash, err := calculateDataHash(req.Target)
 	if err != nil {
 		return nil, err
@@ -101,7 +118,6 @@ func (o *protectOperation) ProtectOp(req *models.ProtectReq) (*models.ProtectRes
 	}
 
 	err = o.store.Put(&model.ProtectedData{
-		Data:          req.Target,
 		PolicyID:      req.Policy,
 		Hash:          hash,
 		DID:           vaultID,
@@ -112,10 +128,10 @@ func (o *protectOperation) ProtectOp(req *models.ProtectReq) (*models.ProtectRes
 		return nil, fmt.Errorf("save sensitive data: %w", err)
 	}
 
-	return &models.ProtectResp{Did: "did:example:12345"}, nil
+	return &models.ProtectResp{Did: vaultID}, nil
 }
 
-func (o *protectOperation) wrapDataIntoVC(sub, data string) (*verifiable.Credential, error) {
+func (o *ProtectOperation) wrapDataIntoVC(sub, data string) (*verifiable.Credential, error) {
 	if data == "" {
 		return nil, errors.New("data is mandatory")
 	}
@@ -139,7 +155,7 @@ func (o *protectOperation) wrapDataIntoVC(sub, data string) (*verifiable.Credent
 		return nil, fmt.Errorf("marshal credential: %w", err)
 	}
 
-	vc, err := o.vcProvider.IssueCredential(credBytes)
+	vc, err := o.issuer.IssueCredential(credBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -147,7 +163,7 @@ func (o *protectOperation) wrapDataIntoVC(sub, data string) (*verifiable.Credent
 	return vc, nil
 }
 
-func (o *protectOperation) saveVCDoc(vaultID string, vc *verifiable.Credential) (string, error) {
+func (o *ProtectOperation) saveVCDoc(vaultID string, vc *verifiable.Credential) (string, error) {
 	docID, err := edvutils.GenerateEDVCompatibleID()
 	if err != nil {
 		return "", fmt.Errorf("create edv doc id : %w", err)
@@ -171,21 +187,23 @@ func calculateDataHash(data string) (string, error) {
 	return string(h.Sum(nil)), nil
 }
 
-func resolveDID(vdrRegistry vdrapi.Registry, did string, maxRetry int) error {
+func resolveDID(vdrRegistry vdrRegistry, resolveDID string, maxRetry int) error {
 	for i := 1; i <= maxRetry; i++ {
-		var err error
-		_, err = vdrRegistry.Resolve(did)
-
-		if err != nil {
-			if !strings.Contains(err.Error(), "DID does not exist") {
-				return err
-			}
-
-			fmt.Printf("did %s not found will retry %d of %d\n", did, i, maxRetry)
-			time.Sleep(1 * time.Second)
-
-			continue
+		_, err := vdrRegistry.Resolve(resolveDID)
+		if err == nil {
+			return nil
 		}
+
+		if !strings.Contains(err.Error(), "DID does not exist") {
+			return err
+		}
+
+		if i == maxRetry {
+			return fmt.Errorf("resolve did: %w", err)
+		}
+
+		fmt.Printf("did %s not found will retry %d of %d\n", resolveDID, i, maxRetry)
+		time.Sleep(1 * time.Second)
 	}
 
 	return nil

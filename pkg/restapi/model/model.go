@@ -34,7 +34,6 @@ type DataProfile struct {
 
 // ProtectedData defines the model for protected data.
 type ProtectedData struct {
-	Data          string `json:"data"`
 	PolicyID      string `json:"policyId"`
 	Hash          string `json:"hash"`
 	DID           string `json:"did"`

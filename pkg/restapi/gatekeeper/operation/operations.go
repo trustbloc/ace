@@ -6,6 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 
 package operation
 
+//nolint:lll
+//go:generate mockgen -destination gomocks_test.go -package operation_test -source=operations.go -mock_names protectOperation=MockProtectOperation,policyStore=MockPolicyStore
+
 import (
 	"encoding/json"
 	"fmt"
@@ -14,17 +17,19 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/hyperledger/aries-framework-go/pkg/common/log"
-	vdrapi "github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdr"
-	"github.com/hyperledger/aries-framework-go/spi/storage"
 
-	"github.com/trustbloc/ace/pkg/client/vault"
 	"github.com/trustbloc/ace/pkg/internal/common/support"
 	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation/models"
-	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation/vcprovider"
 	"github.com/trustbloc/ace/pkg/restapi/model"
-	"github.com/trustbloc/ace/pkg/store/policy"
-	"github.com/trustbloc/ace/pkg/store/protecteddata"
 )
+
+type protectOperation interface {
+	ProtectOp(req *models.ProtectReq) (*models.ProtectResp, error)
+}
+
+type policyStore interface {
+	Put(policyID string, doc *model.PolicyDocument) error
+}
 
 var logger = log.New("gatekeeper")
 
@@ -36,43 +41,10 @@ const (
 	policyEndpoint  = baseV1Path + "/policy/{" + policyIDVarName + "}"
 )
 
-// Config defines configuration for Gatekeeper operations.
-type Config struct {
-	StorageProvider storage.Provider
-	VaultClient     vault.Vault
-	VDRI            vdrapi.Registry
-	VCProvider      vcprovider.Provider
-}
-
-// New returns a new Operation instance.
-func New(config *Config) (*Operation, error) {
-	protectedDataStore, err := protecteddata.New(config.StorageProvider)
-	if err != nil {
-		return nil, err
-	}
-
-	policyStore, err := policy.New(config.StorageProvider)
-	if err != nil {
-		return nil, err
-	}
-
-	protectOp := NewProtectOp(&ProtectConfig{
-		Store:       protectedDataStore,
-		VaultClient: config.VaultClient,
-		VDRI:        config.VDRI,
-		VCProvider:  config.VCProvider,
-	})
-
-	return &Operation{
-		protectOperation: protectOp,
-		policyStore:      policyStore,
-	}, nil
-}
-
 // Operation defines handlers for rp operations.
 type Operation struct {
-	protectOperation ProtectOperation
-	policyStore      policy.Repository
+	ProtectOperation protectOperation
+	PolicyStore      policyStore
 }
 
 // GetRESTHandlers get all controller API handler available for this service.
@@ -93,7 +65,7 @@ func (o *Operation) protectHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response, err := o.protectOperation.ProtectOp(req)
+	response, err := o.ProtectOperation.ProtectOp(req)
 	if err != nil {
 		respondError(rw, http.StatusInternalServerError, err)
 
@@ -115,7 +87,7 @@ func (o *Operation) createPolicyHandler(rw http.ResponseWriter, r *http.Request)
 
 	policyID := strings.ToLower(mux.Vars(r)[policyIDVarName])
 
-	err = o.policyStore.Put(policyID, &doc)
+	err = o.PolicyStore.Put(policyID, &doc)
 	if err != nil {
 		respondError(rw, http.StatusInternalServerError, fmt.Errorf("store policy: %w", err))
 

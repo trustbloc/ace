@@ -12,6 +12,8 @@ require (
 	github.com/go-openapi/runtime v0.23.2
 	github.com/go-openapi/strfmt v0.21.2
 	github.com/go-openapi/swag v0.21.1
+	github.com/go-openapi/validate v0.21.0
+	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/hyperledger/aries-framework-go v0.1.8-0.20220311181400-584f96318d6d
@@ -24,6 +26,7 @@ require (
 	github.com/hyperledger/aries-framework-go/spi v0.0.0-20220310104637-62fd90482e21
 	github.com/igor-pavlenko/httpsignatures-go v0.0.23
 	github.com/piprate/json-gold v0.4.1-0.20210813112359-33b90c4ca86c
+	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.3.0
 	github.com/stretchr/testify v1.7.0
 	github.com/trustbloc/edge-core v0.1.8-0.20220308160458-17fbc683162d
@@ -52,7 +55,6 @@ require (
 	github.com/go-openapi/jsonreference v0.19.6 // indirect
 	github.com/go-openapi/loads v0.21.1 // indirect
 	github.com/go-openapi/spec v0.20.4 // indirect
-	github.com/go-openapi/validate v0.21.0 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
@@ -80,7 +82,6 @@ require (
 	github.com/multiformats/go-varint v0.0.6 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/pquerna/cachecontrol v0.0.0-20180517163645-1555304b9b35 // indirect
 	github.com/rs/cors v1.7.0 // indirect
