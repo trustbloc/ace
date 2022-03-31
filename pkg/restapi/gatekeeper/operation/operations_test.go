@@ -16,13 +16,67 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
-	mockstorage "github.com/hyperledger/aries-framework-go/pkg/mock/storage"
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation"
+	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation/models"
 	"github.com/trustbloc/ace/pkg/restapi/model"
 )
+
+func TestProtectHandler(t *testing.T) {
+	req := &models.ProtectReq{
+		Policy: "10",
+		Target: "test ssn",
+	}
+
+	t.Run("Success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		protectOp := NewMockProtectOperation(ctrl)
+		protectOp.EXPECT().ProtectOp(gomock.Any()).Return(&models.ProtectResp{}, nil)
+
+		op := &operation.Operation{
+			ProtectOperation: protectOp,
+		}
+
+		body, err := json.Marshal(req)
+		require.NoError(t, err)
+
+		rr := handleRequest(t, op, "/v1/protect", http.MethodPost, bytes.NewReader(body))
+
+		require.Equal(t, http.StatusOK, rr.Code)
+	})
+
+	t.Run("Fail to unmarshal request body", func(t *testing.T) {
+		op := &operation.Operation{}
+
+		rr := handleRequest(t, op, "/v1/protect", http.MethodPost,
+			bytes.NewBufferString("invalid json"))
+
+		require.Equal(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("protect op failed", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		protectOp := NewMockProtectOperation(ctrl)
+		protectOp.EXPECT().ProtectOp(gomock.Any()).Return(nil, errors.New("protect op failed"))
+		op := &operation.Operation{
+			ProtectOperation: protectOp,
+		}
+
+		body, err := json.Marshal(req)
+		require.NoError(t, err)
+
+		rr := handleRequest(t, op, "/v1/protect", http.MethodPost, bytes.NewReader(body))
+
+		require.Equal(t, http.StatusInternalServerError, rr.Code)
+	})
+}
 
 func TestCreatePolicyHandler(t *testing.T) {
 	policy := &model.PolicyDocument{
@@ -33,13 +87,15 @@ func TestCreatePolicyHandler(t *testing.T) {
 	}
 
 	t.Run("Success", func(t *testing.T) {
-		op, err := operation.New(&operation.Config{
-			StorageProvider: mockstorage.NewMockStoreProvider(),
-			VaultClient:     nil,
-			VDRI:            nil,
-			VCProvider:      nil,
-		})
-		require.NoError(t, err)
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		store := NewMockPolicyStore(ctrl)
+		store.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1)
+
+		op := &operation.Operation{
+			PolicyStore: store,
+		}
 
 		body, err := json.Marshal(policy)
 		require.NoError(t, err)
@@ -50,13 +106,15 @@ func TestCreatePolicyHandler(t *testing.T) {
 	})
 
 	t.Run("Fail to unmarshal request body", func(t *testing.T) {
-		op, err := operation.New(&operation.Config{
-			StorageProvider: mockstorage.NewMockStoreProvider(),
-			VaultClient:     nil,
-			VDRI:            nil,
-			VCProvider:      nil,
-		})
-		require.NoError(t, err)
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		store := NewMockPolicyStore(ctrl)
+		store.EXPECT().Put(gomock.Any(), gomock.Any()).Times(0)
+
+		op := &operation.Operation{
+			PolicyStore: store,
+		}
 
 		rr := handleRequest(t, op, "/v1/policy/containment-policy", http.MethodPut,
 			bytes.NewBufferString("invalid json"))
@@ -65,16 +123,15 @@ func TestCreatePolicyHandler(t *testing.T) {
 	})
 
 	t.Run("Fail to store policy", func(t *testing.T) {
-		p := mockstorage.NewMockStoreProvider()
-		p.Store.ErrPut = errors.New("put error")
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
 
-		op, err := operation.New(&operation.Config{
-			StorageProvider: p,
-			VaultClient:     nil,
-			VDRI:            nil,
-			VCProvider:      nil,
-		})
-		require.NoError(t, err)
+		store := NewMockPolicyStore(ctrl)
+		store.EXPECT().Put(gomock.Any(), gomock.Any()).Return(errors.New("put error"))
+
+		op := &operation.Operation{
+			PolicyStore: store,
+		}
 
 		body, err := json.Marshal(policy)
 		require.NoError(t, err)

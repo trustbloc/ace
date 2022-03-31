@@ -4,7 +4,10 @@ Copyright SecureKey Technologies Inc. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-package vcprovider
+package vc
+
+//nolint:lll
+//go:generate mockgen -destination gomocks_test.go -self_package mocks -package vc_test -source=issuer.go -mock_names httpClient=MockHTTPClient
 
 import (
 	"encoding/json"
@@ -18,32 +21,27 @@ import (
 )
 
 const (
-	issueCredentialURLFormat  = "%s" + "/credentials/issue"
-	vcsIssuerRequestTokenName = "vcs_issuer"
+	issueCredentialURLFormat = "%s/credentials/issue"
 )
 
 type httpClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 
-// Provider defines the interface to work with verifiable credential.
-type Provider interface {
-	IssueCredential(credBytes []byte) (*verifiable.Credential, error)
-}
-
-// Config for vc provider.
+// Config for issuer service.
 type Config struct {
-	VCIssuerURL     string
-	VCRequestTokens map[string]string
-	DocumentLoader  ld.DocumentLoader
-	HTTPClient      httpClient
+	VCIssuerURL    string
+	AuthToken      string
+	DocumentLoader ld.DocumentLoader
+	HTTPClient     httpClient
 }
 
-type vcProvider struct {
-	vcIssuerURL     string
-	vcRequestTokens map[string]string
-	documentLoader  ld.DocumentLoader
-	httpClient      httpClient
+// Issuer service used to issue verifiable credential.
+type Issuer struct {
+	vcIssuerURL    string
+	AuthToken      string
+	documentLoader ld.DocumentLoader
+	httpClient     httpClient
 }
 
 type issueCredentialRequest struct {
@@ -51,16 +49,17 @@ type issueCredentialRequest struct {
 }
 
 // New creates vc provider.
-func New(config *Config) Provider { //nolint:ireturn
-	return &vcProvider{
-		vcIssuerURL:     config.VCIssuerURL,
-		vcRequestTokens: config.VCRequestTokens,
-		documentLoader:  config.DocumentLoader,
-		httpClient:      config.HTTPClient,
+func New(config *Config) *Issuer {
+	return &Issuer{
+		vcIssuerURL:    config.VCIssuerURL,
+		AuthToken:      config.AuthToken,
+		documentLoader: config.DocumentLoader,
+		httpClient:     config.HTTPClient,
 	}
 }
 
-func (v *vcProvider) IssueCredential(credBytes []byte) (*verifiable.Credential, error) {
+// IssueCredential issue verifiable credential.
+func (v *Issuer) IssueCredential(credBytes []byte) (*verifiable.Credential, error) {
 	vcReq, err := json.Marshal(issueCredentialRequest{
 		Credential: credBytes,
 	})
@@ -71,7 +70,7 @@ func (v *vcProvider) IssueCredential(credBytes []byte) (*verifiable.Credential, 
 	endpoint := fmt.Sprintf(issueCredentialURLFormat, v.vcIssuerURL)
 
 	vcResp, err := httputil.SendHTTPRequest(v.httpClient, http.MethodPost, endpoint, vcReq, http.StatusCreated,
-		v.vcRequestTokens[vcsIssuerRequestTokenName])
+		v.AuthToken)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create vc - url:%s err: %w", endpoint, err)
 	}

@@ -8,3 +8,4 @@
 build/
 coverage*.out
 test/bdd/fixtures/keys
+gomocks_test.go

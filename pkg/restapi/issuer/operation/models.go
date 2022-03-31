@@ -84,7 +84,7 @@ type IssueCredentialRequest struct {
 // IssueCredentialOptions options for issuing credential.
 type IssueCredentialOptions struct {
 	// VerificationMethod is the URI of the verificationMethod used for the proof.
-	// If omitted first ed25519 public key of DID (Issuer or Profile DID) will be used.
+	// If omitted first ed25519 public key of DID (VCIssuer or Profile DID) will be used.
 	VerificationMethod string `json:"verificationMethod,omitempty"`
 	// AssertionMethod is verification method to be used for credential proof.
 	// When provided along with 'VerificationMethod' property, 'VerificationMethod' takes precedence.

@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
 GOBIN_PATH		=$(abspath .)/build/bin
-LINT_VERSION 	?=v1.45.2
+LINT_VERSION 	?=v1.44.2
+MOCK_VERSION 	?=v1.6.0
 
 DOCKER_OUTPUT_NS      ?=ghcr.io
 GATEKEEPER_IMAGE_NAME ?=trustbloc/gatekeeper
@@ -18,6 +19,13 @@ OPENAPI_DOCKER_IMG=quay.io/goswagger/swagger
 OPENAPI_SPEC_PATH=.build/rest/openapi/spec
 OPENAPI_DOCKER_IMG_VERSION=v0.26.0
 
+OS := $(shell uname)
+ifeq  ($(OS),$(filter $(OS),Darwin Linux))
+	PATH:=$(PATH):$(GOBIN_PATH)
+else
+	PATH:=$(PATH);$(subst /,\\,$(GOBIN_PATH))
+endif
+
 .PHONY: all
 all: clean checks unit-test bdd-test
 
@@ -28,15 +36,20 @@ checks: license lint
 license:
 	@scripts/check_license.sh
 
+.PHONY: mocks
+mocks:
+	@GOBIN=$(GOBIN_PATH) go install github.com/golang/mock/mockgen@$(MOCK_VERSION)
+	@go generate ./...
+
 .PHONY: lint
-lint:
+lint: mocks
 	@GOBIN=$(GOBIN_PATH) go install github.com/golangci/golangci-lint/cmd/golangci-lint@$(LINT_VERSION)
 	@$(GOBIN_PATH)/golangci-lint run
 	@cd cmd/gatekeeper && $(GOBIN_PATH)/golangci-lint run -c ../../.golangci.yml
 	@cd test/bdd && $(GOBIN_PATH)/golangci-lint run -c ../../.golangci.yml
 
 .PHONY: unit-test
-unit-test:
+unit-test: mocks
 	@scripts/check_unit.sh
 
 .PHONY: bdd-test
