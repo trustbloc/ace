@@ -90,7 +90,7 @@ func (s *Steps) createIssuerProfile(ctx context.Context, profileName, issuerURL,
 	}
 
 	if resp.StatusCode != http.StatusCreated {
-		return fmt.Errorf("expected status 201 Created, got: %s", resp.Status)
+		return fmt.Errorf("expected status 201 Created, got: %s, %s", resp.Status, resp.Body)
 	}
 
 	if *compConfig.Did != issuerProfile.DID {

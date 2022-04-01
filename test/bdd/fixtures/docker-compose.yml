@@ -52,8 +52,7 @@ services:
       - VAULT_REQUEST_TOKENS=sidetreeToken=tk1
     ports:
       - ${VAULT_SERVER_PORT}:${VAULT_SERVER_PORT}
-    entrypoint: ""
-    command: /bin/sh -c "vault-server start"
+    command: start
     volumes:
       - ./keys/tls:/etc/tls
     networks:
@@ -89,22 +88,22 @@ services:
 
   hubstore.trustbloc.local:
     container_name: hubstore.trustbloc.local
-    image: ${CHS_REST_IMAGE}:${CHS_REST_IMAGE_TAG}
+    image: ${CSH_REST_IMAGE}:${CSH_REST_IMAGE_TAG}
     environment:
-      - CHS_HOST_URL=${CHS_REST_HOST}:${CHS_REST_PORT}
-      - CHS_TLS_SYSTEMCERTPOOL=true
-      - CHS_TLS_CACERTS=/etc/tls/ec-cacert.pem
-      - CHS_TLS_SERVE_CERT=/etc/tls/ec-pubCert.pem
-      - CHS_TLS_SERVE_KEY=/etc/tls/ec-key.pem
+      - CSH_HOST_URL=${CSH_REST_HOST}:${CSH_REST_PORT}
+      - CSH_TLS_SYSTEMCERTPOOL=true
+      - CSH_TLS_CACERTS=/etc/tls/ec-cacert.pem
+      - CSH_TLS_SERVE_CERT=/etc/tls/ec-pubCert.pem
+      - CSH_TLS_SERVE_KEY=/etc/tls/ec-key.pem
       - DATABASE_URL=mongodb://mongodb.trustbloc.local:${MONGODB_PORT}
       - DATABASE_PREFIX=confidentialstoragehub
       - BASE_URL=https://hubstore.trustbloc.local
       - TRUSTBLOC_DID_DOMAIN=orb.trustbloc.local
       - IDENTITY_DID_METHOD=orb
-      - CHS_DID_ANCHOR_ORIGIN=https://orb.trustbloc.local
-      - CHS_REQUEST_TOKENS=sidetreeToken=tk1
+      - CSH_DID_ANCHOR_ORIGIN=https://orb.trustbloc.local
+      - CSH_REQUEST_TOKENS=sidetreeToken=tk1
     ports:
-      - ${CHS_REST_PORT}:${CHS_REST_PORT}
+      - ${CSH_REST_PORT}:${CSH_REST_PORT}
     command: start
     depends_on:
       - mongodb.trustbloc.local
