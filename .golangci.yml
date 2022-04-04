@@ -95,6 +95,7 @@ linters:
     - varnamelen
     - tagliatelle
     - maintidx
+    - ifshort
     - golint # deprecated
     - ireturn # TODO: enable after that linter starts working correctly
 

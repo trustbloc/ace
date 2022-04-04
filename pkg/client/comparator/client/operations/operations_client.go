@@ -161,7 +161,8 @@ func (a *Client) PostCompare(params *PostCompareParams) (*PostCompareOK, error) 
 
 /*
   PostExtract Extract the contents of one or more documents using the authorization tokens provided. The tokens originate
-from authorizations granted at other Comparators.
+from authorizations granted at other Comparators. Each element in the response is correlated to its query
+via the ID.
 
 */
 func (a *Client) PostExtract(params *PostExtractParams) (*PostExtractOK, error) {
