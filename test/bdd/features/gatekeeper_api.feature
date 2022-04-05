@@ -28,8 +28,7 @@ Feature: Gatekeeper API
     Then  response status is "200 OK"
 
    Scenario: Protect a social media handle
-    Given Issuer profile "vc-issuer-gk" is created on "http://localhost:8070" for "localhost:8065"
-      And Intake Processor wants to convert "@thanos27" social media handle into a DID
+    Given Intake Processor wants to convert "@thanos27" social media handle into a DID
     When  an HTTP POST is sent to "https://localhost:9014/v1/protect"
       """
       {

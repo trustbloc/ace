@@ -29,7 +29,7 @@ services:
     command: start
     depends_on:
       - mongodb.trustbloc.local
-      - did.resolver.trustbloc.local
+      - did-resolver.trustbloc.local
       - vc-issuer.trustbloc.local
     networks:
       - bdd_net
@@ -69,7 +69,7 @@ services:
       - COMPARATOR_TLS_SERVE_KEY=/etc/tls/ec-key.pem
       - COMPARATOR_DSN=mongodb://mongodb.trustbloc.local:${MONGODB_PORT}
       - COMPARATOR_DID_DOMAIN=orb.trustbloc.local
-      - COMPARATOR_CSH_URL=https://hubstore.trustbloc.local:8095
+      - COMPARATOR_CSH_URL=https://csh.trustbloc.local:8095
       - COMPARATOR_VAULT_URL=https://vault.trustbloc.local:${VAULT_SERVER_PORT}
       - COMPARATOR_DID_ANCHOR_ORIGIN=https://orb.trustbloc.local
       - COMPARATOR_REQUEST_TOKENS=sidetreeToken=tk1
@@ -78,7 +78,7 @@ services:
     entrypoint: ""
     command: /bin/sh -c "sleep 5;comparator-rest start"
     depends_on:
-      - hubstore.trustbloc.local
+      - csh.trustbloc.local
       - mongodb.trustbloc.local
       - orb.trustbloc.local
     volumes:
@@ -86,8 +86,8 @@ services:
     networks:
       - bdd_net
 
-  hubstore.trustbloc.local:
-    container_name: hubstore.trustbloc.local
+  csh.trustbloc.local:
+    container_name: csh.trustbloc.local
     image: ${CSH_REST_IMAGE}:${CSH_REST_IMAGE_TAG}
     environment:
       - CSH_HOST_URL=${CSH_REST_HOST}:${CSH_REST_PORT}
@@ -97,7 +97,7 @@ services:
       - CSH_TLS_SERVE_KEY=/etc/tls/ec-key.pem
       - DATABASE_URL=mongodb://mongodb.trustbloc.local:${MONGODB_PORT}
       - DATABASE_PREFIX=confidentialstoragehub
-      - BASE_URL=https://hubstore.trustbloc.local
+      - BASE_URL=https://csh.trustbloc.local
       - TRUSTBLOC_DID_DOMAIN=orb.trustbloc.local
       - IDENTITY_DID_METHOD=orb
       - CSH_DID_ANCHOR_ORIGIN=https://orb.trustbloc.local
@@ -113,12 +113,12 @@ services:
     networks:
       - bdd_net
 
-  did.resolver.trustbloc.local:
-    container_name: did.resolver.trustbloc.local
+  did-resolver.trustbloc.local:
+    container_name: did-resolver.trustbloc.local
     image: ${DID_RESOLVER_IMAGE}:${DID_RESOLVER_IMAGE_TAG}
     environment:
       - DID_REST_HOST_URL=${DID_RESOLVER_HOST}:${DID_RESOLVER_PORT}
-      - DID_REST_HOST_URL_EXTERNAL=http://did.resolver.trustbloc.local:${DID_RESOLVER_PORT}
+      - DID_REST_HOST_URL_EXTERNAL=http://did-resolver.trustbloc.local:${DID_RESOLVER_PORT}
       - DID_REST_CONFIG_FILE=/opt/did-rest/config.json
       - DID_REST_TLS_SYSTEMCERTPOOL=true
       - DID_REST_TLS_CACERTS=/etc/tls/ec-cacert.pem
@@ -139,7 +139,7 @@ services:
       - VC_REST_HOST_URL_EXTERNAL=http://vc-issuer.trustbloc.local:${ISSUER_VC_PORT}
       - EDV_REST_HOST_URL=https://edv.trustbloc.local:8081/encrypted-data-vaults
       - BLOC_DOMAIN=orb.trustbloc.local
-      - UNIVERSAL_RESOLVER_HOST_URL=http://did.resolver.trustbloc.local:${DID_RESOLVER_PORT}/1.0/identifiers
+      - UNIVERSAL_RESOLVER_HOST_URL=http://did-resolver.trustbloc.local:${DID_RESOLVER_PORT}/1.0/identifiers
       - DATABASE_TYPE=mongodb
       - DATABASE_URL=mongodb://mongodb.trustbloc.local:${MONGODB_PORT}
       - DATABASE_PREFIX=issuer_
@@ -256,60 +256,23 @@ services:
     networks:
       - bdd_net
 
-
-  uni-resolver-web:
-    container_name: uni-resolver-web
-    image: universalresolver/uni-resolver-web:latest
-    ports:
-      - "8080:8080"
-    volumes:
-      - ./universalresolver/config.json:/opt/uni-resolver-java/uni-resolver-web/config.json
-      - ./universalresolver/run-uni-resolver-web.sh:/opt/uni-resolver-java/uni-resolver-web/docker/run-uni-resolver-web.sh
-    networks:
-      - bdd_net
-
-  driver-did-sov:
-    container_name: driver-did-sov
-    image: universalresolver/driver-did-sov:latest
-    environment:
-      uniresolver_driver_did_sov_libIndyPath: ${uniresolver_driver_did_sov_libIndyPath}
-      uniresolver_driver_did_sov_poolConfigs: ${uniresolver_driver_did_sov_poolConfigs}
-      uniresolver_driver_did_sov_poolVersions: ${uniresolver_driver_did_sov_poolVersions}
-      uniresolver_driver_did_sov_walletName: ${uniresolver_driver_did_sov_walletName}
-    ports:
-      - "8082:8080"
-    networks:
-      - bdd_net
-
-  uni-resolver-driver-did-uport:
-    container_name: uni-resolver-driver-did-uport
-    image: uport/uni-resolver-driver-did-uport:1.3.1
-    ports:
-      - "8083:8081"
-    networks:
-      - bdd_net
-
-  uni-resolver-did-v1-driver:
-    container_name: uni-resolver-did-v1-driver
-    image: veresone/uni-resolver-did-v1-driver:latest
-    ports:
-      - "8085:8080"
-    networks:
-      - bdd_net
-
-  driver-did-factom:
-    container_name: driver-did-factom
-    image: sphereon/driver-did-factom:latest
-    ports:
-      - "8097:8080"
-    networks:
-      - bdd_net
-
   mongodb.trustbloc.local:
     container_name: mongodb.trustbloc.local
     image: ${MONGODB_IMAGE}:${MONGODB_IMAGE_TAG}
     ports:
       - ${MONGODB_PORT}:${MONGODB_PORT}
+    networks:
+      - bdd_net
+
+  bdd-init:
+    container_name: bdd-init
+    image: bdd-init:latest
+    volumes:
+      - ./init/configure.sh:/opt/configure.sh
+      - ./keys/tls:/etc/tls
+    depends_on:
+      - vc-issuer.trustbloc.local
+      - comparator.trustbloc.local
     networks:
       - bdd_net
 
