@@ -39,7 +39,6 @@ Feature: Gatekeeper API
     Then  response status is "200 OK"
      And  response contains non-empty "did"
 
-    @wip
     Scenario: Create a new Release transaction on a DID
       Given a social media handle "@big_pikachu" was converted into a DID
         And Handler decides to request release of that DID

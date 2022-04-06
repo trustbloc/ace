@@ -7,15 +7,17 @@ SPDX-License-Identifier: Apache-2.0
 package gatekeeper
 
 import (
-	vdrapi "github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdr"
+	"fmt"
+
+	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdr"
 	"github.com/hyperledger/aries-framework-go/spi/storage"
 
 	"github.com/trustbloc/ace/pkg/client/vault"
+	"github.com/trustbloc/ace/pkg/gatekeeper/policy"
+	"github.com/trustbloc/ace/pkg/gatekeeper/protect"
+	"github.com/trustbloc/ace/pkg/gatekeeper/release"
 	"github.com/trustbloc/ace/pkg/internal/common/support"
-	"github.com/trustbloc/ace/pkg/protect"
 	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation"
-	"github.com/trustbloc/ace/pkg/store/policy"
-	"github.com/trustbloc/ace/pkg/store/protecteddata"
 	"github.com/trustbloc/ace/pkg/vcissuer"
 )
 
@@ -23,35 +25,40 @@ import (
 type Config struct {
 	StorageProvider storage.Provider
 	VaultClient     vault.Vault
-	VDR             vdrapi.Registry
+	VDR             vdr.Registry
 	VCIssuer        *vcissuer.Service
 }
 
-// New returns new controller instance.
+// New returns a new Controller instance.
 func New(config *Config) (*Controller, error) {
-	protectedDataStore, err := protecteddata.New(config.StorageProvider)
+	policyService, err := policy.NewService(config.StorageProvider)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("create policy service: %w", err)
 	}
 
-	policyStore, err := policy.New(config.StorageProvider)
-	if err != nil {
-		return nil, err
-	}
-
-	protectSvc := protect.NewService(&protect.Config{
-		Store:       protectedDataStore,
-		VaultClient: config.VaultClient,
-		VDR:         config.VDR,
-		VCIssuer:    config.VCIssuer,
+	protectService, err := protect.NewService(&protect.Config{
+		StoreProvider: config.StorageProvider,
+		VaultClient:   config.VaultClient,
+		VDR:           config.VDR,
+		VCIssuer:      config.VCIssuer,
+		PolicyService: policyService,
 	})
-
-	ops := &operation.Operation{
-		ProtectSvc:  protectSvc,
-		PolicyStore: policyStore,
+	if err != nil {
+		return nil, fmt.Errorf("create protect service: %w", err)
 	}
 
-	return &Controller{handlers: ops.GetRESTHandlers()}, nil
+	releaseService, err := release.NewService(config.StorageProvider)
+	if err != nil {
+		return nil, fmt.Errorf("create release service: %w", err)
+	}
+
+	op := &operation.Operation{
+		PolicyService:  policyService,
+		ProtectService: protectService,
+		ReleaseService: releaseService,
+	}
+
+	return &Controller{handlers: op.GetRESTHandlers()}, nil
 }
 
 // Controller contains handlers for controller.
