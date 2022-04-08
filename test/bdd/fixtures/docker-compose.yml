@@ -19,7 +19,7 @@ services:
       - DATABASE_PREFIX=gatekeeper_
       - GK_VAULT_SERVER_URL=https://vault.trustbloc.local:${VAULT_SERVER_PORT}
       - GK_VC_ISSUER_URL=http://vc-issuer.trustbloc.local:${ISSUER_VC_PORT}/vc-issuer-gk
-      - GK_BLOC_DOMAIN=orb.trustbloc.local
+      - GK_BLOC_DOMAIN=testnet.orb.local
       - GK_VC_REQUEST_TOKENS=vcs_issuer=vcs_issuer_rw_token
       - LOG_LEVEL=debug
     ports:
@@ -46,9 +46,9 @@ services:
       - VAULT_TLS_SERVE_CERT=/etc/tls/ec-pubCert.pem
       - VAULT_TLS_SERVE_KEY=/etc/tls/ec-key.pem
       - VAULT_DSN=mongodb://mongodb.trustbloc.local:27017
-      - VAULT_DID_DOMAIN=orb.trustbloc.local
+      - VAULT_DID_DOMAIN=testnet.orb.local
       - VAULT_DID_METHOD=orb
-      - VAULT_DID_ANCHOR_ORIGIN=https://orb.trustbloc.local
+      - VAULT_DID_ANCHOR_ORIGIN=https://testnet.orb.local
       - VAULT_REQUEST_TOKENS=sidetreeToken=tk1
     ports:
       - ${VAULT_SERVER_PORT}:${VAULT_SERVER_PORT}
@@ -68,10 +68,10 @@ services:
       - COMPARATOR_TLS_SERVE_CERT=/etc/tls/ec-pubCert.pem
       - COMPARATOR_TLS_SERVE_KEY=/etc/tls/ec-key.pem
       - COMPARATOR_DSN=mongodb://mongodb.trustbloc.local:${MONGODB_PORT}
-      - COMPARATOR_DID_DOMAIN=orb.trustbloc.local
+      - COMPARATOR_DID_DOMAIN=testnet.orb.local
       - COMPARATOR_CSH_URL=https://csh.trustbloc.local:8095
       - COMPARATOR_VAULT_URL=https://vault.trustbloc.local:${VAULT_SERVER_PORT}
-      - COMPARATOR_DID_ANCHOR_ORIGIN=https://orb.trustbloc.local
+      - COMPARATOR_DID_ANCHOR_ORIGIN=https://testnet.orb.local
       - COMPARATOR_REQUEST_TOKENS=sidetreeToken=tk1
     ports:
       - ${COMPARATOR_REST_PORT}:${COMPARATOR_REST_PORT}
@@ -80,7 +80,7 @@ services:
     depends_on:
       - csh.trustbloc.local
       - mongodb.trustbloc.local
-      - orb.trustbloc.local
+      - testnet.orb.local
     volumes:
       - ./keys/tls:/etc/tls
     networks:
@@ -97,17 +97,17 @@ services:
       - CSH_TLS_SERVE_KEY=/etc/tls/ec-key.pem
       - DATABASE_URL=mongodb://mongodb.trustbloc.local:${MONGODB_PORT}
       - DATABASE_PREFIX=confidentialstoragehub
+      - TRUSTBLOC_DID_DOMAIN=testnet.orb.local
       - BASE_URL=https://csh.trustbloc.local
-      - TRUSTBLOC_DID_DOMAIN=orb.trustbloc.local
       - IDENTITY_DID_METHOD=orb
-      - CSH_DID_ANCHOR_ORIGIN=https://orb.trustbloc.local
+      - CSH_DID_ANCHOR_ORIGIN=https://testnet.orb.local
       - CSH_REQUEST_TOKENS=sidetreeToken=tk1
     ports:
       - ${CSH_REST_PORT}:${CSH_REST_PORT}
     command: start
     depends_on:
       - mongodb.trustbloc.local
-      - orb.trustbloc.local
+      - testnet.orb.local
     volumes:
       - ./keys/tls:/etc/tls
     networks:
@@ -138,7 +138,7 @@ services:
       - VC_REST_HOST_URL=${ISSUER_VC_HOST}:${ISSUER_VC_PORT}
       - VC_REST_HOST_URL_EXTERNAL=http://vc-issuer.trustbloc.local:${ISSUER_VC_PORT}
       - EDV_REST_HOST_URL=https://edv.trustbloc.local:8081/encrypted-data-vaults
-      - BLOC_DOMAIN=orb.trustbloc.local
+      - BLOC_DOMAIN=testnet.orb.local
       - UNIVERSAL_RESOLVER_HOST_URL=http://did-resolver.trustbloc.local:${DID_RESOLVER_PORT}/1.0/identifiers
       - DATABASE_TYPE=mongodb
       - DATABASE_URL=mongodb://mongodb.trustbloc.local:${MONGODB_PORT}
@@ -151,7 +151,7 @@ services:
       - VC_REST_TLS_SYSTEMCERTPOOL=true
       - VC_REST_API_TOKEN=vcs_issuer_rw_token
       - VC_REST_REQUEST_TOKENS=csl=rw_token,sidetreeToken=tk1
-      - VC_REST_DID_ANCHOR_ORIGIN=https://orb.trustbloc.local
+      - VC_REST_DID_ANCHOR_ORIGIN=https://testnet.orb.local
       - VC_REST_CONTEXT_PROVIDER_URL=${CONTEXT_PROVIDER_URL}
     ports:
       - ${ISSUER_VC_PORT}:${ISSUER_VC_PORT}
@@ -195,7 +195,7 @@ services:
       - KMS_LOG_LEVEL=debug
       - KMS_SECRET_LOCK_TYPE=local
       - KMS_SECRET_LOCK_KEY_PATH=/etc/tls/secret-lock.key
-      - KMS_DID_DOMAIN=orb.trustbloc.local
+      - KMS_DID_DOMAIN=testnet.orb.local
     ports:
       - ${KMS_PORT}:${KMS_PORT}
       - "48831:48831"
@@ -223,7 +223,7 @@ services:
       - EDV_LOCALKMS_SECRETS_DATABASE_URL=mongodb://mongodb.trustbloc.local:27017
       - EDV_LOCALKMS_SECRETS_DATABASE_PREFIX=edv_kms_
       - EDV_EXTENSIONS=ReturnFullDocumentsOnQuery,Batch
-      - EDV_DID_DOMAIN=orb.trustbloc.local
+      - EDV_DID_DOMAIN=testnet.orb.local
       - EDV_DATABASE_TIMEOUT=60
       - EDV_AUTH_ENABLE=true
       - EDV_LOG_LEVEL=debug
@@ -237,8 +237,8 @@ services:
     networks:
       - bdd_net
 
-  orb.trustbloc.local:
-    container_name: orb.trustbloc.local
+  testnet.orb.local:
+    container_name: testnet.orb.local
     image: ${SIDETREE_MOCK_IMAGE}:${SIDETREE_MOCK_IMAGE_TAG}
     environment:
       - SIDETREE_MOCK_TLS_CERTIFICATE=/etc/sidetree/tls/ec-pubCert.pem
@@ -246,8 +246,8 @@ services:
       - SIDETREE_MOCK_HOST=0.0.0.0
       - SIDETREE_MOCK_PORT=443
       - SIDETREE_MOCK_DID_NAMESPACE=did:orb
-      - SIDETREE_MOCK_DID_ALIASES=did:orb:orb.trustbloc.local
-      - SIDETREE_MOCK_EXTERNAL_ENDPOINT=https://orb.trustbloc.local
+      - SIDETREE_MOCK_DID_ALIASES=did:orb:testnet.orb.local
+      - SIDETREE_MOCK_EXTERNAL_ENDPOINT=https://testnet.orb.local
       - SIDETREE_MOCK_WELLKNOWN_PATH=did-orb
     ports:
       - 443:443

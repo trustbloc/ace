@@ -76,9 +76,13 @@ func (s *Steps) HealthCheck(ctx context.Context, host string, port int) error {
 }
 
 func (s *Steps) httpGet(ctx context.Context, url string) error {
-	if _, err := httputil.DoRequest(ctx, url, httputil.WithHTTPClient(s.HTTPClient)); err != nil {
+	resp, err := httputil.DoRequest(ctx, url, httputil.WithHTTPClient(s.HTTPClient))
+	if err != nil {
 		return fmt.Errorf("do request: %w", err)
 	}
+
+	s.responseStatus = resp.Status
+	s.responseBody = resp.Body
 
 	return nil
 }
