@@ -21,7 +21,10 @@ import (
 	tlsutil "github.com/trustbloc/edge-core/pkg/utils/tls"
 
 	"github.com/trustbloc/ace/test/bdd/pkg/common"
+	"github.com/trustbloc/ace/test/bdd/pkg/comparator"
+	"github.com/trustbloc/ace/test/bdd/pkg/csh"
 	"github.com/trustbloc/ace/test/bdd/pkg/gatekeeper"
+	"github.com/trustbloc/ace/test/bdd/pkg/vault"
 )
 
 const (
@@ -145,8 +148,21 @@ func initializeScenario(sc *godog.ScenarioContext) {
 	commonSteps := common.NewSteps(tlsConfig)
 	commonSteps.RegisterSteps(sc)
 
+	vaultSteps, err := vault.NewSteps(tlsConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	comparatorSteps, err := comparator.NewSteps(tlsConfig)
+	if err != nil {
+		panic(err)
+	}
+
 	features := []feature{
 		gatekeeper.NewSteps(commonSteps),
+		vaultSteps,
+		comparatorSteps,
+		csh.NewSteps(tlsConfig),
 	}
 
 	for _, f := range features {
