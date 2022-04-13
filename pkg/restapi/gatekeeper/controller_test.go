@@ -9,7 +9,7 @@ package gatekeeper_test
 import (
 	"testing"
 
-	"github.com/hyperledger/aries-framework-go/component/storageutil/mem"
+	"github.com/hyperledger/aries-framework-go/pkg/mock/storage"
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/ace/pkg/restapi/gatekeeper"
@@ -18,7 +18,7 @@ import (
 func TestController_New(t *testing.T) {
 	t.Run("test success", func(t *testing.T) {
 		controller, err := gatekeeper.New(&gatekeeper.Config{
-			StorageProvider: mem.NewProvider(),
+			StorageProvider: storage.NewMockStoreProvider(),
 		})
 		require.NoError(t, err)
 		require.NotNil(t, controller)

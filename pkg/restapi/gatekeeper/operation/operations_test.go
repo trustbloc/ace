@@ -20,6 +20,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
 
+	"github.com/trustbloc/ace/pkg/gatekeeper/protect"
+	"github.com/trustbloc/ace/pkg/gatekeeper/release/ticket"
 	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation"
 	"github.com/trustbloc/ace/pkg/restapi/model"
 )
@@ -34,11 +36,11 @@ func TestProtectHandler(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		protectSvc := NewMockProtectService(ctrl)
-		protectSvc.EXPECT().Protect(gomock.Any(), gomock.Any(), gomock.Any()).Return("did", nil)
+		protectService := NewMockProtectService(ctrl)
+		protectService.EXPECT().Protect(gomock.Any(), gomock.Any(), gomock.Any()).Return(&protect.ProtectedData{}, nil)
 
 		op := &operation.Operation{
-			ProtectSvc: protectSvc,
+			ProtectService: protectService,
 		}
 
 		body, err := json.Marshal(req)
@@ -64,10 +66,10 @@ func TestProtectHandler(t *testing.T) {
 
 		protectSvc := NewMockProtectService(ctrl)
 		protectSvc.EXPECT().Protect(gomock.Any(), gomock.Any(), gomock.Any()).
-			Return("", errors.New("protect failed"))
+			Return(nil, errors.New("protect failed"))
 
 		op := &operation.Operation{
-			ProtectSvc: protectSvc,
+			ProtectService: protectSvc,
 		}
 
 		body, err := json.Marshal(req)
@@ -91,11 +93,11 @@ func TestCreatePolicyHandler(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		store := NewMockPolicyStore(ctrl)
-		store.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1)
+		policyService := NewMockPolicyService(ctrl)
+		policyService.EXPECT().Save(gomock.Any()).Return(nil).Times(1)
 
 		op := &operation.Operation{
-			PolicyStore: store,
+			PolicyService: policyService,
 		}
 
 		body, err := json.Marshal(policy)
@@ -110,11 +112,11 @@ func TestCreatePolicyHandler(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		store := NewMockPolicyStore(ctrl)
-		store.EXPECT().Put(gomock.Any(), gomock.Any()).Times(0)
+		policyService := NewMockPolicyService(ctrl)
+		policyService.EXPECT().Save(gomock.Any()).Times(0)
 
 		op := &operation.Operation{
-			PolicyStore: store,
+			PolicyService: policyService,
 		}
 
 		rr := handleRequest(t, op, "/v1/policy/containment-policy", http.MethodPut,
@@ -127,17 +129,76 @@ func TestCreatePolicyHandler(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		store := NewMockPolicyStore(ctrl)
-		store.EXPECT().Put(gomock.Any(), gomock.Any()).Return(errors.New("put error"))
+		policyService := NewMockPolicyService(ctrl)
+		policyService.EXPECT().Save(gomock.Any()).Return(errors.New("save error")).Times(1)
 
 		op := &operation.Operation{
-			PolicyStore: store,
+			PolicyService: policyService,
 		}
 
 		body, err := json.Marshal(policy)
 		require.NoError(t, err)
 
 		rr := handleRequest(t, op, "/v1/policy/containment-policy", http.MethodPut, bytes.NewReader(body))
+
+		require.Equal(t, http.StatusInternalServerError, rr.Code)
+	})
+}
+
+func TestReleaseHandler(t *testing.T) {
+	const testDID = "did:example:test"
+
+	req := operation.ReleaseRequest{
+		DID: testDID,
+	}
+
+	t.Run("Success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		svc := NewMockReleaseService(ctrl)
+		svc.EXPECT().Release(gomock.Any(), testDID).Return(&ticket.Ticket{}, nil)
+
+		op := &operation.Operation{
+			ReleaseService: svc,
+		}
+
+		body, err := json.Marshal(req)
+		require.NoError(t, err)
+
+		rr := handleRequest(t, op, "/v1/release", http.MethodPost, bytes.NewReader(body))
+
+		require.Equal(t, http.StatusOK, rr.Code)
+	})
+
+	t.Run("Fail to unmarshal request body", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		svc := NewMockReleaseService(ctrl)
+		svc.EXPECT().Release(gomock.Any(), testDID).Times(0)
+
+		op := &operation.Operation{
+			ReleaseService: svc,
+		}
+
+		rr := handleRequest(t, op, "/v1/release", http.MethodPost, bytes.NewBufferString("invalid json"))
+
+		require.Equal(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("Fail to create release transaction on a DID", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		svc := NewMockReleaseService(ctrl)
+		svc.EXPECT().Release(gomock.Any(), testDID).Return(nil, errors.New("release error"))
+
+		op := &operation.Operation{
+			ReleaseService: svc,
+		}
+
+		body, err := json.Marshal(req)
+		require.NoError(t, err)
+
+		rr := handleRequest(t, op, "/v1/release", http.MethodPost, bytes.NewReader(body))
 
 		require.Equal(t, http.StatusInternalServerError, rr.Code)
 	})

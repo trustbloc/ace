@@ -16,3 +16,13 @@ type ProtectRequest struct {
 type ProtectResponse struct {
 	DID string `json:"did"`
 }
+
+// ReleaseRequest is a request to create release transaction on a DID.
+type ReleaseRequest struct {
+	DID string `json:"did"`
+}
+
+// ReleaseResponse is a response for ReleaseRequest.
+type ReleaseResponse struct {
+	TicketID string `json:"ticket_id"`
+}
