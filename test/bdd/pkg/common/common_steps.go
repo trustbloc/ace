@@ -9,44 +9,74 @@ package common
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"crypto/tls"
 	"fmt"
 	"net/http"
 	"text/template"
 
 	"github.com/cucumber/godog"
+	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
+	vdrapi "github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdr"
 	"github.com/tidwall/gjson"
 
+	"github.com/trustbloc/ace/pkg/httpsig"
 	"github.com/trustbloc/ace/test/bdd/pkg/internal/httputil"
+	"github.com/trustbloc/ace/test/bdd/pkg/internal/vdrutil"
 )
 
 const (
 	healthCheckURL = "https://%s:%d/healthcheck"
 )
 
+// DIDOwner defines information about did owner.
+type DIDOwner struct {
+	didDoc     *did.Doc
+	privateKey ed25519.PrivateKey
+}
+
 // Steps defines context for common scenario steps.
 type Steps struct {
 	HTTPClient         *http.Client
+	VDR                vdrapi.Registry
 	responseStatus     string
 	responseStatusCode int
 	responseBody       []byte
+
+	didOwners map[string]DIDOwner
 }
 
 // NewSteps returns new Steps context.
-func NewSteps(tlsConfig *tls.Config) *Steps {
-	return &Steps{
-		HTTPClient: &http.Client{Transport: &http.Transport{TLSClientConfig: tlsConfig}},
+func NewSteps(tlsConfig *tls.Config) (*Steps, error) {
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: tlsConfig,
+		},
 	}
+
+	vdr, err := vdrutil.CreateVDR(httpClient)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Steps{
+		HTTPClient: httpClient,
+		VDR:        vdr,
+		didOwners:  map[string]DIDOwner{},
+	}, nil
 }
 
 // RegisterSteps registers common scenario steps.
 func (s *Steps) RegisterSteps(sc *godog.ScenarioContext) {
 	sc.Step(`^an HTTP GET is sent to "([^"]*)"$`, s.httpGet)
 	sc.Step(`^an HTTP POST is sent to "([^"]*)"$`, s.httpPost)
+	sc.Step(`^an HTTP POST signed by "([^"]*)" is sent to "([^"]*)"$`, s.signedHTTPPost)
 	sc.Step(`^an HTTP PUT is sent to "([^"]*)"$`, s.httpPut)
 	sc.Step(`^response status is "([^"]*)"$`, s.checkResponseStatus)
 	sc.Step(`^response contains "([^"]*)" with value "([^"]*)"$`, s.checkResponseValue)
 	sc.Step(`^response contains non-empty "([^"]*)"$`, s.checkNonEmptyResponseValue)
+
+	sc.Step(`^did owner with name "([^"]*)"$`, s.createDidOwner)
 }
 
 type healthCheckResponse struct {
@@ -91,6 +121,15 @@ func (s *Steps) httpPost(ctx context.Context, url string, docStr *godog.DocStrin
 	return s.httpDo(ctx, http.MethodPost, url, docStr)
 }
 
+func (s *Steps) signedHTTPPost(ctx context.Context, didOwnerName, url string, docStr *godog.DocString) error {
+	requestSigner, err := s.CreateRequestSigner(didOwnerName)
+	if err != nil {
+		return err
+	}
+
+	return s.httpDo(ctx, http.MethodPost, url, docStr, httputil.WithRequestSigner(requestSigner))
+}
+
 func (s *Steps) httpPut(ctx context.Context, url string, docStr *godog.DocString) error {
 	return s.httpDo(ctx, http.MethodPut, url, docStr)
 }
@@ -103,7 +142,7 @@ func ContextWithRequestParams(ctx context.Context, params interface{}) context.C
 	return context.WithValue(ctx, requestParamsKey{}, params)
 }
 
-func (s *Steps) httpDo(ctx context.Context, method, url string, docStr *godog.DocString) error {
+func (s *Steps) httpDo(ctx context.Context, method, url string, docStr *godog.DocString, opts ...httputil.Opt) error {
 	var buf bytes.Buffer
 
 	t, err := template.New("request").Parse(docStr.Content)
@@ -116,8 +155,10 @@ func (s *Steps) httpDo(ctx context.Context, method, url string, docStr *godog.Do
 		return fmt.Errorf("execute template: %w", err)
 	}
 
-	resp, err := httputil.DoRequest(ctx, url, httputil.WithHTTPClient(s.HTTPClient),
+	opts = append(opts, httputil.WithHTTPClient(s.HTTPClient),
 		httputil.WithMethod(method), httputil.WithBody(buf.Bytes()))
+
+	resp, err := httputil.DoRequest(ctx, url, opts...)
 	if err != nil {
 		return fmt.Errorf("do request: %w", err)
 	}
@@ -155,4 +196,39 @@ func (s *Steps) checkNonEmptyResponseValue(path string) error {
 	}
 
 	return nil
+}
+
+func (s *Steps) createDidOwner(didOwnerName string) error {
+	doc, pk, err := vdrutil.CreateDIDDoc(s.VDR)
+	if err != nil {
+		return fmt.Errorf("did doc creation failed: %w", err)
+	}
+
+	_, err = vdrutil.ResolveDID(s.VDR, doc.ID, 10) //nolint:gomnd
+	if err != nil {
+		return fmt.Errorf("did doc resolution failed: %w", err)
+	}
+
+	s.didOwners[didOwnerName] = DIDOwner{
+		didDoc:     doc,
+		privateKey: pk,
+	}
+
+	return nil
+}
+
+// CreateRequestSigner creates request signer for given didOwnerName.
+func (s *Steps) CreateRequestSigner(didOwnerName string) (func(req *http.Request) error, error) {
+	didOwner, ok := s.didOwners[didOwnerName]
+	if !ok {
+		return nil, fmt.Errorf("invalid did owner name %q", didOwnerName)
+	}
+
+	signer := httpsig.NewSigner(httpsig.DefaultPostSignerConfig(), didOwner.privateKey)
+
+	requestSigner := func(req *http.Request) error {
+		return signer.SignRequest(didOwner.didDoc.Authentication[0].VerificationMethod.ID, req)
+	}
+
+	return requestSigner, nil
 }

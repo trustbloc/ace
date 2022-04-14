@@ -145,7 +145,11 @@ type feature interface {
 }
 
 func initializeScenario(sc *godog.ScenarioContext) {
-	commonSteps := common.NewSteps(tlsConfig)
+	commonSteps, err := common.NewSteps(tlsConfig)
+	if err != nil {
+		panic(err)
+	}
+
 	commonSteps.RegisterSteps(sc)
 
 	vaultSteps, err := vault.NewSteps(tlsConfig)

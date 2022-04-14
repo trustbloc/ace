@@ -12,7 +12,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/trustbloc/ace/pkg/internal/common/support"
+	"github.com/trustbloc/ace/pkg/restapi/handler"
 	"github.com/trustbloc/ace/pkg/restapi/healthcheck/operation"
 )
 
@@ -26,16 +26,16 @@ func TestHealthCheck(t *testing.T) {
 
 	b := &httptest.ResponseRecorder{}
 
-	var handler support.Handler
+	var hndl handler.Handler
 
 	for _, h := range c.GetRESTHandlers() {
 		if h.Path() == "/healthcheck" {
-			handler = h
+			hndl = h
 		}
 	}
 
-	require.NotNil(t, handler)
-	handler.Handle()(b, nil)
+	require.NotNil(t, hndl)
+	hndl.Handle()(b, nil)
 
 	require.Equal(t, http.StatusOK, b.Code)
 }

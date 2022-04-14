@@ -7,8 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package comparator
 
 import (
-	"github.com/trustbloc/ace/pkg/internal/common/support"
 	"github.com/trustbloc/ace/pkg/restapi/comparator/operation"
+	"github.com/trustbloc/ace/pkg/restapi/handler"
 )
 
 // New returns new controller instance.
@@ -25,10 +25,10 @@ func New(config *operation.Config) (*Controller, error) {
 
 // Controller contains handlers for controller.
 type Controller struct {
-	handlers []support.Handler
+	handlers []handler.Handler
 }
 
 // GetOperations returns all controller endpoints.
-func (c *Controller) GetOperations() []support.Handler {
+func (c *Controller) GetOperations() []handler.Handler {
 	return c.handlers
 }

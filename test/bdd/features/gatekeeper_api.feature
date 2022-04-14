@@ -7,13 +7,14 @@
 @all
 @gatekeeper
 Feature: Gatekeeper API
+
   Background:
     Given Gatekeeper is running on "localhost" port "9014"
 
   Scenario: Service health check
     When  an HTTP GET is sent to "https://localhost:9014/healthcheck"
     Then  response status is "200 OK"
-     And  response contains "status" with value "success"
+    And  response contains "status" with value "success"
 
   Scenario: Create policy configuration for storing/releasing protected data
     When  an HTTP PUT is sent to "https://localhost:9014/v1/policy/containment-policy"
@@ -27,9 +28,10 @@ Feature: Gatekeeper API
       """
     Then  response status is "200 OK"
 
-   Scenario: Protect a social media handle
-    Given Intake Processor wants to convert "@thanos27" social media handle into a DID
-    When  an HTTP POST is sent to "https://localhost:9014/v1/protect"
+  Scenario: Protect a social media handle
+    Given did owner with name "Intake Processor"
+    And Intake Processor wants to convert "@thanos27" social media handle into a DID
+    When  an HTTP POST signed by "Intake Processor" is sent to "https://localhost:9014/v1/protect"
       """
       {
         "target": "{{ .SocialMediaHandle }}",
@@ -37,10 +39,11 @@ Feature: Gatekeeper API
       }
       """
     Then  response status is "200 OK"
-     And  response contains non-empty "did"
+    And  response contains non-empty "did"
 
     Scenario: Create a new Release transaction on a DID
-      Given a social media handle "@big_pikachu" was converted into a DID
+      Given did owner with name "Intake Processor"
+        And a social media handle "@big_pikachu" was converted into a DID by "Intake Processor"
         And Handler decides to request release of that DID
       When  an HTTP POST is sent to "https://localhost:9014/v1/release"
         """
@@ -48,5 +51,5 @@ Feature: Gatekeeper API
           "target": "{{ .DID }}"
         }
         """
-      Then  response status is "200 OK"
-       And  response contains non-empty "ticket_id"
+    Then  response status is "200 OK"
+    And  response contains non-empty "ticket_id"

@@ -31,9 +31,9 @@ import (
 
 	"github.com/trustbloc/ace/pkg/client/vault"
 	did2 "github.com/trustbloc/ace/pkg/did"
-	"github.com/trustbloc/ace/pkg/internal/common/support"
 	"github.com/trustbloc/ace/pkg/restapi/csh/operation/openapi"
 	zcapld2 "github.com/trustbloc/ace/pkg/restapi/csh/operation/zcapld"
+	"github.com/trustbloc/ace/pkg/restapi/handler"
 )
 
 const (
@@ -114,13 +114,13 @@ func New(cfg *Config) (*Operation, error) {
 }
 
 // GetRESTHandlers get all controller API handler available for this service.
-func (o *Operation) GetRESTHandlers() []support.Handler {
-	return []support.Handler{
-		support.NewHTTPHandler(createProfilePath, http.MethodPost, o.CreateProfile),
-		support.NewHTTPHandler(createQueryPath, http.MethodPost, o.CreateQuery),
-		support.NewHTTPHandler(createAuthzPath, http.MethodPost, o.CreateAuthorization),
-		support.NewHTTPHandler(comparePath, http.MethodPost, o.Compare),
-		support.NewHTTPHandler(extractPath, http.MethodPost, o.Extract),
+func (o *Operation) GetRESTHandlers() []handler.Handler {
+	return []handler.Handler{
+		handler.NewHTTPHandler(createProfilePath, http.MethodPost, o.CreateProfile),
+		handler.NewHTTPHandler(createQueryPath, http.MethodPost, o.CreateQuery),
+		handler.NewHTTPHandler(createAuthzPath, http.MethodPost, o.CreateAuthorization),
+		handler.NewHTTPHandler(comparePath, http.MethodPost, o.Compare),
+		handler.NewHTTPHandler(extractPath, http.MethodPost, o.Extract),
 	}
 }
 

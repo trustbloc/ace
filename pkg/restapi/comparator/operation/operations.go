@@ -37,8 +37,8 @@ import (
 	cshclientmodels "github.com/trustbloc/ace/pkg/client/csh/models"
 	vaultclient "github.com/trustbloc/ace/pkg/client/vault"
 	vccrypto "github.com/trustbloc/ace/pkg/doc/vc/crypto"
-	"github.com/trustbloc/ace/pkg/internal/common/support"
 	"github.com/trustbloc/ace/pkg/restapi/comparator/operation/models"
+	"github.com/trustbloc/ace/pkg/restapi/handler"
 	"github.com/trustbloc/ace/pkg/restapi/model"
 	"github.com/trustbloc/ace/pkg/restapi/vault"
 )
@@ -166,12 +166,12 @@ func New(cfg *Config) (*Operation, error) {
 }
 
 // GetRESTHandlers get all controller API handler available for this service.
-func (o *Operation) GetRESTHandlers() []support.Handler {
-	return []support.Handler{
-		support.NewHTTPHandler(createAuthzPath, http.MethodPost, o.CreateAuthorization),
-		support.NewHTTPHandler(comparePath, http.MethodPost, o.Compare),
-		support.NewHTTPHandler(extractPath, http.MethodPost, o.Extract),
-		support.NewHTTPHandler(getConfigPath, http.MethodGet, o.GetConfig),
+func (o *Operation) GetRESTHandlers() []handler.Handler {
+	return []handler.Handler{
+		handler.NewHTTPHandler(createAuthzPath, http.MethodPost, o.CreateAuthorization),
+		handler.NewHTTPHandler(comparePath, http.MethodPost, o.Compare),
+		handler.NewHTTPHandler(extractPath, http.MethodPost, o.Extract),
+		handler.NewHTTPHandler(getConfigPath, http.MethodGet, o.GetConfig),
 	}
 }
 

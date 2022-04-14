@@ -35,7 +35,7 @@ func NewSteps(commonSteps *common.Steps) *Steps {
 func (s *Steps) RegisterSteps(sc *godog.ScenarioContext) {
 	sc.Step(`^Gatekeeper is running on "([^"]*)" port "([^"]*)"$`, s.cs.HealthCheck)
 	sc.Step(`^Intake Processor wants to convert "([^"]*)" social media handle into a DID$`, s.setSocialMediaHandle)
-	sc.Step(`^a social media handle "([^"]*)" was converted into a DID$`, s.convertIntoDID)
+	sc.Step(`^a social media handle "([^"]*)" was converted into a DID by "([^"]*)"$`, s.convertIntoDID)
 	sc.Step(`^Handler decides to request release of that DID`, s.setDID)
 }
 
@@ -58,7 +58,7 @@ type protectResp struct {
 	DID string `json:"did"`
 }
 
-func (s *Steps) convertIntoDID(ctx context.Context, handle string) error {
+func (s *Steps) convertIntoDID(ctx context.Context, handle, didOwner string) error {
 	req := &protectReq{
 		Policy: "containment-policy",
 		Target: handle,
@@ -69,13 +69,19 @@ func (s *Steps) convertIntoDID(ctx context.Context, handle string) error {
 		return fmt.Errorf("marshal protect request: %w", err)
 	}
 
+	signer, err := s.cs.CreateRequestSigner(didOwner)
+	if err != nil {
+		return fmt.Errorf("create request signer: %w", err)
+	}
+
 	var protectResponse protectResp
 
 	resp, err := httputil.DoRequest(ctx, "https://localhost:9014/v1/protect",
 		httputil.WithMethod(http.MethodPost),
 		httputil.WithBody(reqBytes),
 		httputil.WithHTTPClient(s.cs.HTTPClient),
-		httputil.WithParsedResponse(&protectResponse))
+		httputil.WithParsedResponse(&protectResponse),
+		httputil.WithRequestSigner(signer))
 	if err != nil {
 		return fmt.Errorf("do protect request: %w", err)
 	}

@@ -22,7 +22,7 @@ import (
 	"github.com/trustbloc/ace/pkg/gatekeeper/policy"
 	"github.com/trustbloc/ace/pkg/gatekeeper/protect"
 	"github.com/trustbloc/ace/pkg/gatekeeper/release/ticket"
-	"github.com/trustbloc/ace/pkg/internal/common/support"
+	"github.com/trustbloc/ace/pkg/restapi/handler"
 	"github.com/trustbloc/ace/pkg/restapi/model"
 )
 
@@ -56,11 +56,11 @@ type Operation struct {
 }
 
 // GetRESTHandlers get all controller API handler available for this service.
-func (o *Operation) GetRESTHandlers() []support.Handler {
-	return []support.Handler{
-		support.NewHTTPHandler(policyEndpoint, http.MethodPut, o.createPolicyHandler),
-		support.NewHTTPHandler(protectEndpoint, http.MethodPost, o.protectHandler),
-		support.NewHTTPHandler(releaseEndpoint, http.MethodPost, o.releaseHandler),
+func (o *Operation) GetRESTHandlers() []handler.Handler {
+	return []handler.Handler{
+		handler.NewHTTPHandler(policyEndpoint, http.MethodPut, o.createPolicyHandler),
+		handler.NewHTTPHandler(protectEndpoint, http.MethodPost, o.protectHandler, handler.WithAuth(handler.AuthHTTPSig)),
+		handler.NewHTTPHandler(releaseEndpoint, http.MethodPost, o.releaseHandler),
 	}
 }
 
