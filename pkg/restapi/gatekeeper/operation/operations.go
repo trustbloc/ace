@@ -7,11 +7,12 @@ SPDX-License-Identifier: Apache-2.0
 package operation
 
 //nolint:lll
-//go:generate mockgen -destination gomocks_test.go -package operation_test -source=operations.go -mock_names policyService=MockPolicyService,protectService=MockProtectService,releaseService=MockReleaseService
+//go:generate mockgen -destination gomocks_test.go -package operation_test -source=operations.go -mock_names policyService=MockPolicyService,protectService=MockProtectService,releaseService=MockReleaseService,subjectResolver=MockSubjectResolver
 
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -37,22 +38,29 @@ const (
 var logger = log.New("gatekeeper")
 
 type policyService interface {
-	Save(doc *policy.Policy) error
+	Save(ctx context.Context, doc *policy.Policy) error
+	Check(ctx context.Context, policyID, did string, role policy.Role) error
 }
 
 type protectService interface {
 	Protect(ctx context.Context, data, policyID string) (*protect.ProtectedData, error)
+	Get(ctx context.Context, did string) (*protect.ProtectedData, error)
 }
 
 type releaseService interface {
 	Release(ctx context.Context, did string) (*ticket.Ticket, error)
 }
 
+type subjectResolver interface {
+	Resolve(ctx context.Context) (string, error)
+}
+
 // Operation defines handlers for Gatekeeper operations.
 type Operation struct {
-	PolicyService  policyService
-	ProtectService protectService
-	ReleaseService releaseService
+	PolicyService   policyService
+	ProtectService  protectService
+	ReleaseService  releaseService
+	SubjectResolver subjectResolver
 }
 
 // GetRESTHandlers get all controller API handler available for this service.
@@ -76,7 +84,7 @@ func (o *Operation) createPolicyHandler(rw http.ResponseWriter, r *http.Request)
 
 	p.ID = strings.ToLower(mux.Vars(r)[policyIDVarName])
 
-	err = o.PolicyService.Save(&p)
+	err = o.PolicyService.Save(r.Context(), &p)
 	if err != nil {
 		respondError(rw, http.StatusInternalServerError, fmt.Errorf("save policy: %w", err))
 
@@ -92,6 +100,12 @@ func (o *Operation) protectHandler(rw http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
 		respondError(rw, http.StatusBadRequest, err)
+
+		return
+	}
+
+	if err = o.checkPolicy(r.Context(), req.Policy, policy.Collector); err != nil {
+		respondError(rw, err.(*policyError).status, err) //nolint:errorlint,forcetypeassert
 
 		return
 	}
@@ -116,7 +130,18 @@ func (o *Operation) releaseHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: resolve and save into context handler DID
+	protectedData, err := o.ProtectService.Get(r.Context(), req.DID)
+	if err != nil {
+		respondError(rw, http.StatusInternalServerError, err)
+
+		return
+	}
+
+	if err = o.checkPolicy(r.Context(), protectedData.PolicyID, policy.Handler); err != nil {
+		respondError(rw, err.(*policyError).status, err) //nolint:errorlint,forcetypeassert
+
+		return
+	}
 
 	t, err := o.ReleaseService.Release(r.Context(), req.DID)
 	if err != nil {
@@ -126,6 +151,37 @@ func (o *Operation) releaseHandler(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	respond(rw, http.StatusOK, &ReleaseResponse{TicketID: t.ID})
+}
+
+type policyError struct {
+	status int
+	err    error
+}
+
+func (e *policyError) Error() string {
+	if e.err != nil {
+		return e.err.Error()
+	}
+
+	return ""
+}
+
+func (o *Operation) checkPolicy(ctx context.Context, policyID string, role policy.Role) error {
+	sub, err := o.SubjectResolver.Resolve(ctx)
+	if err != nil {
+		return &policyError{status: http.StatusUnauthorized, err: err}
+	}
+
+	err = o.PolicyService.Check(ctx, policyID, sub, role)
+	if err != nil {
+		if errors.Is(err, policy.ErrNotAllowed) {
+			return &policyError{status: http.StatusUnauthorized, err: err}
+		}
+
+		return &policyError{status: http.StatusInternalServerError, err: err}
+	}
+
+	return nil
 }
 
 func respond(w http.ResponseWriter, statusCode int, payload interface{}) {

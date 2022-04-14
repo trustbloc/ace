@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package gatekeeper
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdr"
@@ -18,6 +19,7 @@ import (
 	"github.com/trustbloc/ace/pkg/gatekeeper/release"
 	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation"
 	"github.com/trustbloc/ace/pkg/restapi/handler"
+	"github.com/trustbloc/ace/pkg/restapi/mw/httpsigmw"
 	"github.com/trustbloc/ace/pkg/vcissuer"
 )
 
@@ -41,7 +43,6 @@ func New(config *Config) (*Controller, error) {
 		VaultClient:   config.VaultClient,
 		VDR:           config.VDR,
 		VCIssuer:      config.VCIssuer,
-		PolicyService: policyService,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create protect service: %w", err)
@@ -53,12 +54,24 @@ func New(config *Config) (*Controller, error) {
 	}
 
 	op := &operation.Operation{
-		PolicyService:  policyService,
-		ProtectService: protectService,
-		ReleaseService: releaseService,
+		PolicyService:   policyService,
+		ProtectService:  protectService,
+		ReleaseService:  releaseService,
+		SubjectResolver: &subjectDIDResolver{},
 	}
 
 	return &Controller{handlers: op.GetRESTHandlers()}, nil
+}
+
+type subjectDIDResolver struct{}
+
+func (r *subjectDIDResolver) Resolve(ctx context.Context) (string, error) {
+	sub, ok := httpsigmw.SubjectDID(ctx)
+	if !ok {
+		return "", fmt.Errorf("missing subject DID in context")
+	}
+
+	return sub, nil
 }
 
 // Controller contains handlers for controller.

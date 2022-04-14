@@ -15,12 +15,20 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/hyperledger/aries-framework-go/component/storageutil/mem"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/verifiable"
 	"github.com/hyperledger/aries-framework-go/pkg/mock/storage"
+	storageapi "github.com/hyperledger/aries-framework-go/spi/storage"
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/ace/pkg/gatekeeper/protect"
 	"github.com/trustbloc/ace/pkg/restapi/vault"
+)
+
+const (
+	storeName    = "protected_data"
+	policyIndex  = "policyID"
+	testPolicyID = "test-policy"
 )
 
 func TestProtect_StoreGetFailed(t *testing.T) {
@@ -273,4 +281,39 @@ func TestProtect_Success(t *testing.T) {
 
 	require.Nil(t, err)
 	require.Equal(t, protectedData.DID, "did:orb:vault")
+}
+
+func TestProtect_GetSuccess(t *testing.T) {
+	storeProvider := mem.NewProvider()
+
+	store, openErr := storeProvider.OpenStore(storeName)
+	require.NoError(t, openErr)
+
+	for i := 1; i <= 3; i++ {
+		b, err := json.Marshal(&protect.ProtectedData{DID: fmt.Sprintf("did:example:test#%d", i)})
+		require.NoError(t, err)
+
+		err = store.Put(fmt.Sprintf("%d", i), b, storageapi.Tag{Name: policyIndex, Value: testPolicyID})
+		require.NoError(t, err)
+	}
+
+	t.Run("Success", func(t *testing.T) {
+		svc, err := protect.NewService(&protect.Config{StoreProvider: storeProvider})
+		require.NoError(t, err)
+
+		data, err := svc.Get(context.Background(), "did:example:test#2")
+
+		require.NoError(t, err)
+		require.Equal(t, "did:example:test#2", data.DID)
+	})
+
+	t.Run("ErrDataNotFound", func(t *testing.T) {
+		svc, err := protect.NewService(&protect.Config{StoreProvider: storeProvider})
+		require.NoError(t, err)
+
+		data, err := svc.Get(context.Background(), "did:example:missing")
+
+		require.EqualError(t, err, "get protected data: data not found")
+		require.Nil(t, data)
+	})
 }

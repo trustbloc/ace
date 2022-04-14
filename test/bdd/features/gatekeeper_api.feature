@@ -28,6 +28,7 @@ Feature: Gatekeeper API
       """
     Then  response status is "200 OK"
 
+  @wip
   Scenario: Protect a social media handle
     Given did owner with name "Intake Processor"
     And Intake Processor wants to convert "@thanos27" social media handle into a DID
@@ -41,6 +42,7 @@ Feature: Gatekeeper API
     Then  response status is "200 OK"
     And  response contains non-empty "did"
 
+    @wip
     Scenario: Create a new Release transaction on a DID
       Given did owner with name "Intake Processor"
         And a social media handle "@big_pikachu" was converted into a DID by "Intake Processor"
@@ -48,7 +50,7 @@ Feature: Gatekeeper API
       When  an HTTP POST is sent to "https://localhost:9014/v1/release"
         """
         {
-          "target": "{{ .DID }}"
+          "did": "{{ .DID }}"
         }
         """
     Then  response status is "200 OK"
