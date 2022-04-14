@@ -19,12 +19,11 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/hyperledger/aries-framework-go/pkg/controller/rest"
 	"github.com/hyperledger/aries-framework-go/spi/storage"
 	"github.com/stretchr/testify/require"
 	"github.com/trustbloc/edv/pkg/restapi/messages"
 
-	"github.com/trustbloc/ace/pkg/internal/common/support"
+	"github.com/trustbloc/ace/pkg/restapi/handler"
 	"github.com/trustbloc/ace/pkg/restapi/model"
 	"github.com/trustbloc/ace/pkg/restapi/vault"
 	vaultoperation "github.com/trustbloc/ace/pkg/restapi/vault/operation"
@@ -364,7 +363,7 @@ func TestDeleteAuthorization(t *testing.T) {
 }
 
 // sendRequestToHandler reads response from given http handle func.
-func sendRequestToHandler(t *testing.T, h support.Handler, reqBody io.Reader, path string) (*bytes.Buffer, int) {
+func sendRequestToHandler(t *testing.T, h handler.Handler, reqBody io.Reader, path string) (*bytes.Buffer, int) {
 	t.Helper()
 
 	// prepare request
@@ -385,7 +384,7 @@ func sendRequestToHandler(t *testing.T, h support.Handler, reqBody io.Reader, pa
 	return rr.Body, rr.Code
 }
 
-func handlerLookup(t *testing.T, op *vaultoperation.Operation, lookup, method string) rest.Handler { //nolint:ireturn
+func handlerLookup(t *testing.T, op *vaultoperation.Operation, lookup, method string) handler.Handler { //nolint:ireturn
 	t.Helper()
 
 	for _, h := range op.GetRESTHandlers() {

@@ -27,7 +27,9 @@ import (
 	"github.com/trustbloc/ace/cmd/common"
 	vaultclient "github.com/trustbloc/ace/pkg/client/vault"
 	"github.com/trustbloc/ace/pkg/restapi/gatekeeper"
+	"github.com/trustbloc/ace/pkg/restapi/handler"
 	"github.com/trustbloc/ace/pkg/restapi/healthcheck"
+	"github.com/trustbloc/ace/pkg/restapi/mw/httpsigmw"
 	"github.com/trustbloc/ace/pkg/vcissuer"
 )
 
@@ -323,8 +325,19 @@ func startService(params *serviceParameters, srv server) error { // nolint: funl
 		return err
 	}
 
-	for _, handler := range service.GetOperations() {
-		router.HandleFunc(handler.Path(), handler.Handle()).Methods(handler.Method())
+	httpSigMW := httpsigmw.New(&httpsigmw.Config{
+		VDR: vdr,
+	})
+
+	for _, operation := range service.GetOperations() {
+		var h http.Handler
+		h = operation.Handle()
+
+		if operation.Auth() == handler.AuthHTTPSig {
+			h = httpSigMW.Middleware(h)
+		}
+
+		router.Handle(operation.Path(), h).Methods(operation.Method())
 	}
 
 	// start server on given port and serve using given handlers

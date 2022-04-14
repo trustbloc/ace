@@ -18,7 +18,6 @@ import (
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 	"github.com/google/uuid"
-	"github.com/hyperledger/aries-framework-go-ext/component/vdr/orb"
 	"github.com/hyperledger/aries-framework-go/component/storageutil/mem"
 	"github.com/hyperledger/aries-framework-go/pkg/crypto/tinkcrypto"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/util/signature"
@@ -27,7 +26,6 @@ import (
 	"github.com/hyperledger/aries-framework-go/pkg/kms/localkms"
 	"github.com/hyperledger/aries-framework-go/pkg/secretlock"
 	"github.com/hyperledger/aries-framework-go/pkg/secretlock/noop"
-	vdrpkg "github.com/hyperledger/aries-framework-go/pkg/vdr"
 	"github.com/hyperledger/aries-framework-go/pkg/vdr/fingerprint"
 	ariesstorage "github.com/hyperledger/aries-framework-go/spi/storage"
 	"github.com/trustbloc/edge-core/pkg/zcapld"
@@ -75,9 +73,7 @@ func NewSteps(tlsConfig *tls.Config) (*Steps, error) {
 		httpClient,
 	)
 
-	orbVDR, err := orb.New(nil, orb.WithDomain("testnet.orb.local"),
-		orb.WithHTTPClient(httpClient),
-	)
+	vdr, err := vdrutil.CreateVDR(httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +81,7 @@ func NewSteps(tlsConfig *tls.Config) (*Steps, error) {
 	return &Steps{
 		httpClient:     httpClient,
 		client:         client.New(transport, strfmt.Default),
-		vdrRegistry:    vdrpkg.New(vdrpkg.WithVDR(orbVDR)),
+		vdrRegistry:    vdr,
 		authorizations: make(map[string]*models.Authorization),
 	}, nil
 }

@@ -16,8 +16,8 @@ import (
 	"github.com/trustbloc/ace/pkg/gatekeeper/policy"
 	"github.com/trustbloc/ace/pkg/gatekeeper/protect"
 	"github.com/trustbloc/ace/pkg/gatekeeper/release"
-	"github.com/trustbloc/ace/pkg/internal/common/support"
 	"github.com/trustbloc/ace/pkg/restapi/gatekeeper/operation"
+	"github.com/trustbloc/ace/pkg/restapi/handler"
 	"github.com/trustbloc/ace/pkg/vcissuer"
 )
 
@@ -63,10 +63,10 @@ func New(config *Config) (*Controller, error) {
 
 // Controller contains handlers for controller.
 type Controller struct {
-	handlers []support.Handler
+	handlers []handler.Handler
 }
 
 // GetOperations returns all controller endpoints.
-func (c *Controller) GetOperations() []support.Handler {
+func (c *Controller) GetOperations() []handler.Handler {
 	return c.handlers
 }

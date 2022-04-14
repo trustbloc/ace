@@ -18,7 +18,7 @@ import (
 	"github.com/trustbloc/edv/pkg/edvutils"
 	"github.com/trustbloc/edv/pkg/restapi/messages"
 
-	"github.com/trustbloc/ace/pkg/internal/common/support"
+	"github.com/trustbloc/ace/pkg/restapi/handler"
 	"github.com/trustbloc/ace/pkg/restapi/model"
 	"github.com/trustbloc/ace/pkg/restapi/vault"
 )
@@ -52,15 +52,15 @@ func New(v vault.Vault) *Operation {
 }
 
 // GetRESTHandlers get all controller API handler available for this service.
-func (o *Operation) GetRESTHandlers() []support.Handler {
-	return []support.Handler{
-		support.NewHTTPHandler(CreateVaultPath, http.MethodPost, o.CreateVault),
-		support.NewHTTPHandler(DeleteVaultPath, http.MethodDelete, o.DeleteVault),
-		support.NewHTTPHandler(SaveDocPath, http.MethodPost, o.SaveDoc),
-		support.NewHTTPHandler(GetDocMetadataPath, http.MethodGet, o.GetDocMetadata),
-		support.NewHTTPHandler(CreateAuthorizationPath, http.MethodPost, o.CreateAuthorization),
-		support.NewHTTPHandler(GetAuthorizationPath, http.MethodGet, o.GetAuthorization),
-		support.NewHTTPHandler(DeleteAuthorizationPath, http.MethodDelete, o.DeleteAuthorization),
+func (o *Operation) GetRESTHandlers() []handler.Handler {
+	return []handler.Handler{
+		handler.NewHTTPHandler(CreateVaultPath, http.MethodPost, o.CreateVault),
+		handler.NewHTTPHandler(DeleteVaultPath, http.MethodDelete, o.DeleteVault),
+		handler.NewHTTPHandler(SaveDocPath, http.MethodPost, o.SaveDoc),
+		handler.NewHTTPHandler(GetDocMetadataPath, http.MethodGet, o.GetDocMetadata),
+		handler.NewHTTPHandler(CreateAuthorizationPath, http.MethodPost, o.CreateAuthorization),
+		handler.NewHTTPHandler(GetAuthorizationPath, http.MethodGet, o.GetAuthorization),
+		handler.NewHTTPHandler(DeleteAuthorizationPath, http.MethodDelete, o.DeleteAuthorization),
 	}
 }
 

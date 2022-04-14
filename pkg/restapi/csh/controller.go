@@ -9,8 +9,8 @@ package csh
 import (
 	"fmt"
 
-	"github.com/trustbloc/ace/pkg/internal/common/support"
 	"github.com/trustbloc/ace/pkg/restapi/csh/operation"
+	"github.com/trustbloc/ace/pkg/restapi/handler"
 )
 
 // New returns new controller instance.
@@ -25,10 +25,10 @@ func New(cfg *operation.Config) (*Controller, error) {
 
 // Controller contains handlers for controller.
 type Controller struct {
-	handlers []support.Handler
+	handlers []handler.Handler
 }
 
 // GetOperations returns all controller endpoints.
-func (c *Controller) GetOperations() []support.Handler {
+func (c *Controller) GetOperations() []handler.Handler {
 	return c.handlers
 }
