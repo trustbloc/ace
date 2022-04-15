@@ -58,7 +58,7 @@ type Operation struct {
 // GetRESTHandlers get all controller API handler available for this service.
 func (o *Operation) GetRESTHandlers() []handler.Handler {
 	return []handler.Handler{
-		handler.NewHTTPHandler(policyEndpoint, http.MethodPut, o.createPolicyHandler),
+		handler.NewHTTPHandler(policyEndpoint, http.MethodPut, o.createPolicyHandler, handler.WithAuth(handler.AuthToken)),
 		handler.NewHTTPHandler(protectEndpoint, http.MethodPost, o.protectHandler, handler.WithAuth(handler.AuthHTTPSig)),
 		handler.NewHTTPHandler(releaseEndpoint, http.MethodPost, o.releaseHandler),
 	}

@@ -30,6 +30,7 @@ import (
 	"github.com/trustbloc/ace/pkg/restapi/handler"
 	"github.com/trustbloc/ace/pkg/restapi/healthcheck"
 	"github.com/trustbloc/ace/pkg/restapi/mw/httpsigmw"
+	"github.com/trustbloc/ace/pkg/restapi/mw/tokenauth"
 	"github.com/trustbloc/ace/pkg/vcissuer"
 )
 
@@ -92,6 +93,11 @@ const (
 	vcRequestTokensFlagUsage = "Tokens used for http request to vc issuer" +
 		" Alternatively, this can be set with the following environment variable: " + vcRequestTokensEnvKey
 
+	authTokenFlagName  = "api-token"
+	authTokenEnvKey    = "GK_REST_API_TOKEN" //nolint: gosec
+	authTokenFlagUsage = "Bearer token used for a token protected api calls. " +
+		" Alternatively, this can be set with the following environment variable: " + authTokenEnvKey
+
 	tokenLength2              = 2
 	vcsIssuerRequestTokenName = "vcs_issuer"
 )
@@ -115,6 +121,7 @@ type serviceParameters struct {
 	vcRequestTokens     map[string]string
 	vcIssuerURL         string
 	vaultServerURL      string
+	authToken           string
 }
 
 type server interface {
@@ -186,7 +193,7 @@ func createStartCmd(srv server) *cobra.Command {
 	}
 }
 
-func getParameters(cmd *cobra.Command) (*serviceParameters, error) {
+func getParameters(cmd *cobra.Command) (*serviceParameters, error) { //nolint: funlen
 	host, err := cmdutils.GetUserSetVarFromString(cmd, hostURLFlagName, hostURLEnvKey, false)
 	if err != nil {
 		return nil, err
@@ -235,6 +242,9 @@ func getParameters(cmd *cobra.Command) (*serviceParameters, error) {
 		return nil, err
 	}
 
+	authToken, err := cmdutils.GetUserSetVarFromString(cmd, authTokenFlagName,
+		authTokenEnvKey, true)
+
 	return &serviceParameters{
 		host:                host,
 		tlsParams:           tlsParams,
@@ -245,6 +255,7 @@ func getParameters(cmd *cobra.Command) (*serviceParameters, error) {
 		vcRequestTokens:     vcRequestTokens,
 		vcIssuerURL:         vcIssuerURL,
 		vaultServerURL:      vaultServerURL,
+		authToken:           authToken,
 	}, err
 }
 
@@ -260,6 +271,7 @@ func createFlags(cmd *cobra.Command) {
 	cmd.Flags().StringP(vaultServerURLFlagName, "", "", vaultServerURLFlagUsage)
 	cmd.Flags().StringP(vcIssuerURLFlagName, "", "", vcIssuerURLFlagUsage)
 	cmd.Flags().StringArrayP(vcRequestTokensFlagName, "", []string{}, vcRequestTokensFlagUsage)
+	cmd.Flags().StringP(authTokenFlagName, "", "", authTokenFlagUsage)
 
 	common.Flags(cmd)
 }
@@ -329,12 +341,18 @@ func startService(params *serviceParameters, srv server) error { // nolint: funl
 		VDR: vdr,
 	})
 
+	tokenAuthMW := tokenauth.New(params.authToken)
+
 	for _, operation := range service.GetOperations() {
 		var h http.Handler
 		h = operation.Handle()
 
 		if operation.Auth() == handler.AuthHTTPSig {
 			h = httpSigMW.Middleware(h)
+		}
+
+		if operation.Auth() == handler.AuthToken && params.authToken != "" {
+			h = tokenAuthMW.Middleware(h)
 		}
 
 		router.Handle(operation.Path(), h).Methods(operation.Method())
