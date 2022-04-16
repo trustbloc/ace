@@ -118,7 +118,7 @@ func (s *Steps) httpGet(ctx context.Context, url string) error {
 }
 
 func (s *Steps) httpPost(ctx context.Context, url string, docStr *godog.DocString) error {
-	return s.httpDo(ctx, http.MethodPost, url, docStr)
+	return s.httpDo(ctx, http.MethodPost, url, docStr, httputil.WithAuthToken("gk_token"))
 }
 
 func (s *Steps) signedHTTPPost(ctx context.Context, didOwnerName, url string, docStr *godog.DocString) error {
@@ -131,7 +131,7 @@ func (s *Steps) signedHTTPPost(ctx context.Context, didOwnerName, url string, do
 }
 
 func (s *Steps) httpPut(ctx context.Context, url string, docStr *godog.DocString) error {
-	return s.httpDo(ctx, http.MethodPut, url, docStr)
+	return s.httpDo(ctx, http.MethodPut, url, docStr, httputil.WithAuthToken("gk_token"))
 }
 
 type requestParamsKey struct{}

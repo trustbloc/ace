@@ -21,6 +21,7 @@ services:
       - GK_VC_ISSUER_URL=http://vc-issuer.trustbloc.local:${ISSUER_VC_PORT}/vc-issuer-gk
       - GK_BLOC_DOMAIN=testnet.orb.local
       - GK_VC_REQUEST_TOKENS=vcs_issuer=vcs_issuer_rw_token
+      - GK_REST_API_TOKEN=gk_token
       - LOG_LEVEL=debug
     ports:
       - "9014:9014"
