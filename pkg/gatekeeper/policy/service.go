@@ -19,6 +19,9 @@ const (
 	storeName = "policy"
 )
 
+// ErrNotAllowed is returned when a subject DID is not allowed to proceed under the given policy.
+var ErrNotAllowed = errors.New("not allowed")
+
 // Service works with policy configurations.
 type Service struct {
 	store storage.Store
@@ -34,24 +37,8 @@ func NewService(storeProvider storage.Provider) (*Service, error) {
 	return &Service{store: store}, nil
 }
 
-// Get returns policy by ID.
-func (s *Service) Get(policyID string) (*Policy, error) {
-	b, err := s.store.Get(policyID)
-	if err != nil {
-		return nil, fmt.Errorf("get policy: %w", err)
-	}
-
-	var policy Policy
-
-	if err = json.Unmarshal(b, &policy); err != nil {
-		return nil, fmt.Errorf("unmarshal policy: %w", err)
-	}
-
-	return &policy, nil
-}
-
 // Save stores policy configuration.
-func (s *Service) Save(doc *Policy) error {
+func (s *Service) Save(_ context.Context, doc *Policy) error {
 	b, err := json.Marshal(doc)
 	if err != nil {
 		return fmt.Errorf("marshal policy: %w", err)
@@ -65,7 +52,7 @@ func (s *Service) Save(doc *Policy) error {
 }
 
 // Check checks if DID is allowed to proceed under the given policy.
-func (s *Service) Check(ctx context.Context, policyID, did string, role Role) error {
+func (s *Service) Check(_ context.Context, policyID, did string, role Role) error {
 	b, err := s.store.Get(policyID)
 	if err != nil {
 		return fmt.Errorf("get policy: %w", err)
@@ -98,5 +85,5 @@ func (s *Service) Check(ctx context.Context, policyID, did string, role Role) er
 		}
 	}
 
-	return errors.New("not allowed")
+	return ErrNotAllowed
 }

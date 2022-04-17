@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/hyperledger/aries-framework-go/pkg/common/log"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/did"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/util"
 	"github.com/hyperledger/aries-framework-go/pkg/doc/verifiable"
@@ -26,15 +27,17 @@ import (
 	"github.com/hyperledger/aries-framework-go/spi/storage"
 	"github.com/trustbloc/edv/pkg/edvutils"
 
-	"github.com/trustbloc/ace/pkg/gatekeeper/policy"
 	"github.com/trustbloc/ace/pkg/restapi/vault"
 )
 
 const (
 	credentialContext = "https://www.w3.org/2018/credentials/v1" //nolint:gosec
-	storeName         = "protected_data_"
+	storeName         = "protected_data"
 	resolveMaxRetry   = 10
+	policyIndex       = "policyID"
 )
+
+var logger = log.New("protect-svc")
 
 type vaultClient interface {
 	CreateVault() (*vault.CreatedVault, error)
@@ -49,26 +52,20 @@ type vcIssuer interface {
 	IssueCredential(ctx context.Context, cred []byte) (*verifiable.Credential, error)
 }
 
-type policyService interface {
-	Check(ctx context.Context, policyID, did string, role policy.Role) error
-}
-
 // Config defines dependencies for Service.
 type Config struct {
 	StoreProvider storage.Provider
 	VaultClient   vaultClient
 	VDR           vdrRegistry
 	VCIssuer      vcIssuer
-	PolicyService policyService
 }
 
 // Service is a service for converting sensitive data into DID.
 type Service struct {
-	store         storage.Store
-	vaultClient   vaultClient
-	vdr           vdrRegistry
-	issuer        vcIssuer
-	policyService policyService
+	store       storage.Store
+	vaultClient vaultClient
+	vdr         vdrRegistry
+	issuer      vcIssuer
 }
 
 // NewService returns a new instance of Service.
@@ -78,21 +75,70 @@ func NewService(config *Config) (*Service, error) {
 		return nil, fmt.Errorf("open protected data store: %w", err)
 	}
 
+	err = config.StoreProvider.SetStoreConfig(storeName, storage.StoreConfiguration{TagNames: []string{policyIndex}})
+	if err != nil {
+		return nil, fmt.Errorf("set protected data store configuration: %w", err)
+	}
+
 	return &Service{
-		store:         store,
-		vaultClient:   config.VaultClient,
-		vdr:           config.VDR,
-		issuer:        config.VCIssuer,
-		policyService: config.PolicyService,
+		store:       store,
+		vaultClient: config.VaultClient,
+		vdr:         config.VDR,
+		issuer:      config.VCIssuer,
 	}, nil
 }
 
+// ProtectedData defines the model for protected data.
+type ProtectedData struct {
+	DID      string `json:"did"`
+	VCDocID  string `json:"vc_doc_id,omitempty"`
+	PolicyID string `json:"policy_id,omitempty"`
+}
+
+// Get gets protected data for target DID.
+func (s *Service) Get(_ context.Context, targetDID string) (*ProtectedData, error) {
+	iter, err := s.store.Query(policyIndex)
+	if err != nil {
+		return nil, fmt.Errorf("query protected data: %w", err)
+	}
+
+	defer func() {
+		err = iter.Close()
+		if err != nil {
+			logger.Errorf("Failed to close iterator: %s", err.Error())
+		}
+	}()
+
+	for {
+		if ok, err := iter.Next(); !ok || err != nil {
+			if err != nil {
+				return nil, fmt.Errorf("next entry: %w", err)
+			}
+
+			break
+		}
+
+		v, err := iter.Value()
+		if err != nil {
+			return nil, fmt.Errorf("get value: %w", err)
+		}
+
+		var data ProtectedData
+
+		if err = json.Unmarshal(v, &data); err != nil {
+			return nil, fmt.Errorf("unmarshal data: %w", err)
+		}
+
+		if data.DID == targetDID {
+			return &data, nil
+		}
+	}
+
+	return nil, fmt.Errorf("get protected data: %w", storage.ErrDataNotFound)
+}
+
 // Protect converts sensitive data into DID.
-func (s *Service) Protect(ctx context.Context, target, policyID string) (*ProtectedData, error) { //nolint:funlen
-	// TODO: Consider moving that logic to middleware
-	// if err := s.policyService.Check(ctx, policyID, "TODO: resolve DID from ctx", policy.Collector); err != nil {
-	//	 return nil, fmt.Errorf("check policy: %w", err)
-	// }
+func (s *Service) Protect(ctx context.Context, target, policyID string) (*ProtectedData, error) {
 	hash, err := calculateHash(target)
 	if err != nil {
 		return nil, fmt.Errorf("calculate hash: %w", err)
@@ -147,7 +193,7 @@ func (s *Service) Protect(ctx context.Context, target, policyID string) (*Protec
 		return nil, fmt.Errorf("marshal protected data: %w", err)
 	}
 
-	if err = s.store.Put(hash, b); err != nil {
+	if err = s.store.Put(hash, b, storage.Tag{Name: policyIndex, Value: data.PolicyID}); err != nil {
 		return nil, fmt.Errorf("save protected data: %w", err)
 	}
 

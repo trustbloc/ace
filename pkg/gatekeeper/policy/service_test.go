@@ -7,8 +7,10 @@ SPDX-License-Identifier: Apache-2.0
 package policy_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/hyperledger/aries-framework-go/pkg/mock/storage"
@@ -52,38 +54,6 @@ func TestNewService(t *testing.T) {
 	})
 }
 
-func TestService_Get(t *testing.T) {
-	const policyID = "test-policy"
-
-	t.Run("Success", func(t *testing.T) {
-		store := storage.NewMockStoreProvider()
-		store.Store.Store[policyID] = storage.DBEntry{
-			Value: []byte(testPolicy),
-		}
-
-		svc, err := policy.NewService(store)
-		require.NoError(t, err)
-
-		p, err := svc.Get(policyID)
-
-		require.NoError(t, err)
-		require.NotNil(t, p)
-	})
-
-	t.Run("Fail to get policy", func(t *testing.T) {
-		store := storage.NewMockStoreProvider()
-		store.Store.ErrGet = errors.New("get error")
-
-		svc, err := policy.NewService(store)
-		require.NoError(t, err)
-
-		p, err := svc.Get(policyID)
-
-		require.EqualError(t, err, "get policy: get error")
-		require.Nil(t, p)
-	})
-}
-
 func TestService_Save(t *testing.T) {
 	var p policy.Policy
 
@@ -93,7 +63,7 @@ func TestService_Save(t *testing.T) {
 		svc, err := policy.NewService(storage.NewMockStoreProvider())
 		require.NoError(t, err)
 
-		err = svc.Save(&p)
+		err = svc.Save(context.Background(), &p)
 
 		require.NoError(t, err)
 	})
@@ -105,8 +75,90 @@ func TestService_Save(t *testing.T) {
 		svc, err := policy.NewService(store)
 		require.NoError(t, err)
 
-		err = svc.Save(&p)
+		err = svc.Save(context.Background(), &p)
 
 		require.EqualError(t, err, "save policy: put error")
+	})
+}
+
+func TestService_Check(t *testing.T) {
+	const (
+		testDID      = "did:example:test"
+		testPolicyID = "test-policy"
+	)
+
+	t.Run("Fail to get policy", func(t *testing.T) {
+		store := storage.NewMockStoreProvider()
+		store.Store.ErrGet = errors.New("get error")
+
+		svc, err := policy.NewService(store)
+		require.NoError(t, err)
+
+		err = svc.Check(context.Background(), testPolicyID, testDID, policy.Collector)
+
+		require.EqualError(t, err, "get policy: get error")
+	})
+
+	t.Run("Fail to unmarshal policy", func(t *testing.T) {
+		store := storage.NewMockStoreProvider()
+		store.Store.Store[testPolicyID] = storage.DBEntry{Value: []byte("invalid policy")}
+
+		svc, err := policy.NewService(store)
+		require.NoError(t, err)
+
+		err = svc.Check(context.Background(), testPolicyID, testDID, policy.Collector)
+
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "unmarshal policy")
+	})
+
+	t.Run("ErrNotAllowed", func(t *testing.T) {
+		store := storage.NewMockStoreProvider()
+		store.Store.Store[testPolicyID] = storage.DBEntry{Value: []byte(testPolicy)}
+
+		svc, err := policy.NewService(store)
+		require.NoError(t, err)
+
+		tests := []struct {
+			did  string
+			role policy.Role
+		}{
+			{"did:example:eon_spengler", policy.Collector},
+			{"did:example:peter_venkman", policy.Handler},
+			{"did:example:ray_stantz", policy.Approver},
+		}
+
+		for _, tt := range tests {
+			t.Run(fmt.Sprintf("role_%d", tt.role), func(t *testing.T) {
+				err = svc.Check(context.Background(), testPolicyID, tt.did, tt.role)
+
+				require.EqualError(t, err, policy.ErrNotAllowed.Error())
+			})
+		}
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		store := storage.NewMockStoreProvider()
+		store.Store.Store[testPolicyID] = storage.DBEntry{Value: []byte(testPolicy)}
+
+		svc, err := policy.NewService(store)
+		require.NoError(t, err)
+
+		tests := []struct {
+			did  string
+			role policy.Role
+		}{
+			{"did:example:ray_stantz", policy.Collector},
+			{"did:example:alter_peck", policy.Handler},
+			{"did:example:eon_spengler", policy.Approver},
+		}
+
+		for _, tt := range tests {
+			t.Run("", func(t *testing.T) {
+				err = svc.Check(context.Background(), testPolicyID, tt.did, tt.role)
+
+				require.NoError(t, err)
+			})
+		}
 	})
 }

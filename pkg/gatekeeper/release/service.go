@@ -37,7 +37,7 @@ func NewService(storeProvider storage.Provider) (*Service, error) {
 }
 
 // Release creates release transaction (ticket) on the protected resource (DID).
-func (s *Service) Release(ctx context.Context, did string) (*ticket.Ticket, error) {
+func (s *Service) Release(_ context.Context, did string) (*ticket.Ticket, error) {
 	t := &ticket.Ticket{
 		ID:     uuid.New().String(),
 		DID:    did,

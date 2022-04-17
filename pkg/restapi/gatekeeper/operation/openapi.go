@@ -6,7 +6,9 @@ SPDX-License-Identifier: Apache-2.0
 
 package operation
 
-import "github.com/trustbloc/ace/pkg/restapi/model"
+import (
+	"github.com/trustbloc/ace/pkg/gatekeeper/policy"
+)
 
 // createPolicyReq model
 //
@@ -14,6 +16,6 @@ import "github.com/trustbloc/ace/pkg/restapi/model"
 type createPolicyReq struct { // nolint: unused,deadcode
 	// in: body
 	Body struct {
-		model.PolicyDocument
+		policy.Policy
 	}
 }
