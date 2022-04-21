@@ -68,7 +68,7 @@ func (o *Operation) GetRESTHandlers() []handler.Handler {
 	return []handler.Handler{
 		handler.NewHTTPHandler(policyEndpoint, http.MethodPut, o.createPolicyHandler, handler.WithAuth(handler.AuthToken)),
 		handler.NewHTTPHandler(protectEndpoint, http.MethodPost, o.protectHandler, handler.WithAuth(handler.AuthHTTPSig)),
-		handler.NewHTTPHandler(releaseEndpoint, http.MethodPost, o.releaseHandler),
+		handler.NewHTTPHandler(releaseEndpoint, http.MethodPost, o.releaseHandler, handler.WithAuth(handler.AuthHTTPSig)),
 	}
 }
 
