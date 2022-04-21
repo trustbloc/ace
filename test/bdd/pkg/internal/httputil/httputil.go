@@ -50,14 +50,13 @@ func DoRequest(ctx context.Context, url string, opts ...Opt) (*Response, error) 
 
 	req.Header.Add(contentType, applicationJSON)
 
-	if op.token != "" {
-		req.Header.Add(authorization, "Bearer "+op.token)
+	if op.authToken != "" {
+		req.Header.Add(authorization, "Bearer "+op.authToken)
 	}
 
-	if op.requestSigner != nil {
-		err = op.requestSigner(req)
-		if err != nil {
-			return nil, fmt.Errorf("http do: sign request: %w", err)
+	if op.signer != nil {
+		if err = op.signer.Sign(req); err != nil {
+			return nil, fmt.Errorf("sign request: %w", err)
 		}
 	}
 
@@ -82,7 +81,9 @@ func DoRequest(ctx context.Context, url string, opts ...Opt) (*Response, error) 
 		return nil, fmt.Errorf("read response body: %w", err)
 	}
 
-	r.Body = body
+	if len(body) > 0 {
+		r.Body = body
+	}
 
 	if op.parsedResponse != nil {
 		if err = json.Unmarshal(body, op.parsedResponse); err != nil {
@@ -93,16 +94,17 @@ func DoRequest(ctx context.Context, url string, opts ...Opt) (*Response, error) 
 	return r, nil
 }
 
-// RequestSigner defines function type used to sign request.
-type RequestSigner = func(req *http.Request) error
+type requestSigner interface {
+	Sign(req *http.Request) error
+}
 
 type options struct {
 	httpClient     *http.Client
 	method         string
 	body           io.Reader
-	token          string
+	authToken      string
+	signer         requestSigner
 	parsedResponse interface{}
-	requestSigner  RequestSigner
 }
 
 // Opt configures HTTP request options.
@@ -132,14 +134,14 @@ func WithBody(val []byte) Opt {
 // WithAuthToken specifies an authorization token.
 func WithAuthToken(token string) Opt {
 	return func(o *options) {
-		o.token = token
+		o.authToken = token
 	}
 }
 
-// WithRequestSigner specifies an authorization token.
-func WithRequestSigner(requestSigner RequestSigner) Opt {
+// WithSigner specifies a request signer for HTTP Signatures.
+func WithSigner(signer requestSigner) Opt {
 	return func(o *options) {
-		o.requestSigner = requestSigner
+		o.signer = signer
 	}
 }
 

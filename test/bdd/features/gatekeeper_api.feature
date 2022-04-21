@@ -28,30 +28,40 @@ Feature: Gatekeeper API
       """
     Then  response status is "200 OK"
 
-  @wip
   Scenario: Protect a social media handle
     Given did owner with name "Intake Processor"
-    And Intake Processor wants to convert "@thanos27" social media handle into a DID
+     And  policy configuration with ID "intake-policy"
+      """
+      {
+        "collectors": ["{{ .GetDID "Intake Processor" }}"]
+      }
+      """
     When  an HTTP POST signed by "Intake Processor" is sent to "https://localhost:9014/v1/protect"
       """
       {
-        "target": "{{ .SocialMediaHandle }}",
-        "policy": "{{ .PolicyID }}"
+        "target": "@thanos",
+        "policy": "intake-policy"
       }
       """
     Then  response status is "200 OK"
-    And  response contains non-empty "did"
+     And  response contains non-empty "did"
 
-    @wip
     Scenario: Create a new Release transaction on a DID
       Given did owner with name "Intake Processor"
-        And a social media handle "@big_pikachu" was converted into a DID by "Intake Processor"
-        And Handler decides to request release of that DID
-      When  an HTTP POST is sent to "https://localhost:9014/v1/release"
+       And  did owner with name "Handler"
+       And  policy configuration with ID "release-policy"
         """
         {
-          "did": "{{ .DID }}"
+          "collectors": ["{{ .GetDID "Intake Processor" }}"],
+          "handlers": ["{{ .GetDID "Handler" }}"]
         }
         """
-    Then  response status is "200 OK"
-    And  response contains non-empty "ticket_id"
+       And  a social media handle "@big_pikachu" converted into a DID by "Intake Processor"
+      When  an HTTP POST signed by "Handler" is sent to "https://localhost:9014/v1/release"
+        """
+        {
+          "did": "{{ .Value "targetDID" }}"
+        }
+        """
+      Then  response status is "200 OK"
+       And  response contains non-empty "ticket_id"
