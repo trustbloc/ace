@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -27,13 +28,14 @@ var logger = log.New("ace-bdd")
 
 // Response is an HTTP response.
 type Response struct {
-	Status     string
-	StatusCode int
-	Body       []byte
+	Status       string
+	StatusCode   int
+	Body         []byte
+	ErrorMessage string
 }
 
 // DoRequest makes an HTTP request.
-func DoRequest(ctx context.Context, url string, opts ...Opt) (*Response, error) {
+func DoRequest(ctx context.Context, url string, opts ...Opt) (*Response, error) { //nolint:funlen
 	op := &options{
 		httpClient: http.DefaultClient,
 		method:     http.MethodGet,
@@ -56,7 +58,7 @@ func DoRequest(ctx context.Context, url string, opts ...Opt) (*Response, error) 
 
 	if op.signer != nil {
 		if err = op.signer.Sign(req); err != nil {
-			return nil, fmt.Errorf("sign request: %w", err)
+			return nil, fmt.Errorf("sign http request: %w", err)
 		}
 	}
 
@@ -83,6 +85,16 @@ func DoRequest(ctx context.Context, url string, opts ...Opt) (*Response, error) 
 
 	if len(body) > 0 {
 		r.Body = body
+
+		if resp.StatusCode != http.StatusOK {
+			var errResp errorResponse
+
+			if err = json.Unmarshal(body, &errResp); err == nil && errResp.Message != "" {
+				return nil, errors.New(errResp.Message)
+			}
+
+			return nil, errors.New(resp.Status)
+		}
 	}
 
 	if op.parsedResponse != nil {
@@ -92,6 +104,10 @@ func DoRequest(ctx context.Context, url string, opts ...Opt) (*Response, error) 
 	}
 
 	return r, nil
+}
+
+type errorResponse struct {
+	Message string `json:"errMessage,omitempty"`
 }
 
 type requestSigner interface {
