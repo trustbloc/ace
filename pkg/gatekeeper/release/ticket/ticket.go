@@ -18,9 +18,24 @@ const (
 	ReadyToCollect
 )
 
+// String returns string representation of Status.
+func (s Status) String() string {
+	switch s {
+	case New:
+		return "NEW"
+	case Collecting:
+		return "COLLECTING"
+	case ReadyToCollect:
+		return "READY_TO_COLLECT"
+	default:
+		return ""
+	}
+}
+
 // Ticket represents a ticket to release protected resource (DID).
 type Ticket struct {
-	ID     string `json:"id"`
-	DID    string `json:"did"`
-	Status Status `json:"status"`
+	ID         string   `json:"id"`
+	DID        string   `json:"did"`
+	Status     Status   `json:"status"`
+	ApprovedBy []string `json:"approved_by"`
 }

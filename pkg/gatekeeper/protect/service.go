@@ -271,7 +271,6 @@ func resolveDID(vdrRegistry vdrRegistry, resolveDID string, maxRetry int) error 
 			return fmt.Errorf("resolve did: %w", err)
 		}
 
-		fmt.Printf("did %s not found will retry %d of %d\n", resolveDID, i, maxRetry)
 		time.Sleep(1 * time.Second)
 	}
 

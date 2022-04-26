@@ -48,7 +48,11 @@ func New(config *Config) (*Controller, error) {
 		return nil, fmt.Errorf("create protect service: %w", err)
 	}
 
-	releaseService, err := release.NewService(config.StorageProvider)
+	releaseService, err := release.NewService(&release.Config{
+		StoreProvider:  config.StorageProvider,
+		PolicyService:  policyService,
+		ProtectService: protectService,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("create release service: %w", err)
 	}

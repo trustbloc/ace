@@ -19,7 +19,10 @@ import (
 	"github.com/trustbloc/ace/pkg/gatekeeper/policy"
 )
 
-const testPolicy = `{
+const (
+	testDID      = "did:example:test"
+	testPolicyID = "test-policy"
+	testPolicy   = `{
   "id": "test-policy",
   "collectors": [
     "did:example:ray_stantz"
@@ -34,6 +37,7 @@ const testPolicy = `{
   ],
   "min_approvers": 2
 }`
+)
 
 func TestNewService(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
@@ -82,11 +86,6 @@ func TestService_Save(t *testing.T) {
 }
 
 func TestService_Check(t *testing.T) {
-	const (
-		testDID      = "did:example:test"
-		testPolicyID = "test-policy"
-	)
-
 	t.Run("Fail to get policy", func(t *testing.T) {
 		store := storage.NewMockStoreProvider()
 		store.Store.ErrGet = errors.New("get error")
@@ -160,5 +159,33 @@ func TestService_Check(t *testing.T) {
 				require.NoError(t, err)
 			})
 		}
+	})
+}
+
+func TestService_Get(t *testing.T) {
+	t.Run("Fail to get policy", func(t *testing.T) {
+		store := storage.NewMockStoreProvider()
+		store.Store.ErrGet = errors.New("get error")
+
+		svc, err := policy.NewService(store)
+		require.NoError(t, err)
+
+		p, err := svc.Get(context.Background(), testPolicyID)
+
+		require.EqualError(t, err, "get policy: get error")
+		require.Nil(t, p)
+	})
+
+	t.Run("Success", func(t *testing.T) {
+		store := storage.NewMockStoreProvider()
+		store.Store.Store[testPolicyID] = storage.DBEntry{Value: []byte(testPolicy)}
+
+		svc, err := policy.NewService(store)
+		require.NoError(t, err)
+
+		p, err := svc.Get(context.Background(), testPolicyID)
+
+		require.NoError(t, err)
+		require.NotNil(t, p)
 	})
 }
