@@ -6,15 +6,19 @@ SPDX-License-Identifier: Apache-2.0
 
 package gatekeeper
 
-type protectReq struct {
+type protectRequest struct {
 	Policy string `json:"policy"`
 	Target string `json:"target"`
 }
 
-type protectResp struct {
+type protectResponse struct {
 	DID string `json:"did"`
 }
 
-type errorResponse struct {
-	Message string `json:"errMessage,omitempty"`
+type releaseRequest struct {
+	DID string `json:"did"`
+}
+
+type releaseResponse struct {
+	TicketID string `json:"ticket_id"`
 }

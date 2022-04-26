@@ -9,8 +9,8 @@ package gatekeeper
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"text/template"
@@ -22,18 +22,31 @@ import (
 	"github.com/trustbloc/ace/test/bdd/pkg/internal/vdrutil"
 )
 
+const (
+	authToken = "gk_token"
+)
+
+// DIDOwner defines parameters of a DID owner.
+type DIDOwner struct {
+	DID         string
+	PublicKeyID string
+	PrivateKey  ed25519.PrivateKey
+}
+
 // Steps defines context for Gatekeeper scenario steps.
 type Steps struct {
 	cs        *common.Steps
-	didOwners map[string]string // "did owner name" -> did:orb:...
+	didOwners map[string]*DIDOwner
 	policyID  string
+	targetDID string
+	ticketID  string
 }
 
 // NewSteps returns new Steps context.
 func NewSteps(commonSteps *common.Steps) *Steps {
 	return &Steps{
 		cs:        commonSteps,
-		didOwners: make(map[string]string),
+		didOwners: make(map[string]*DIDOwner),
 	}
 }
 
@@ -42,25 +55,32 @@ func (s *Steps) RegisterSteps(sc *godog.ScenarioContext) {
 	sc.Step(`^Gatekeeper is running on "([^"]*)" port "([^"]*)"$`, s.cs.HealthCheck)
 	sc.Step(`^did owner with name "([^"]*)"$`, s.createDIDOwner)
 	sc.Step(`^policy configuration with ID "([^"]*)"$`, s.createPolicy)
-	sc.Step(`^a social media handle "([^"]*)" converted into a DID by "([^"]*)"$`, s.convertIntoDID)
+	sc.Step(`^social media handle "([^"]*)" converted into DID by "([^"]*)"$`, s.convertIntoDID)
+	sc.Step(`^release transaction created on DID by "([^"]*)"$`, s.createTicket)
 }
 
 func (s *Steps) createDIDOwner(ctx context.Context, name string) (context.Context, error) {
 	doc, pk, err := vdrutil.CreateDIDDoc(s.cs.VDR)
 	if err != nil {
-		return nil, fmt.Errorf("create did doc: %w", err)
+		return context.Background(), fmt.Errorf("create did doc: %w", err)
 	}
 
 	_, err = vdrutil.ResolveDID(s.cs.VDR, doc.ID, 10) //nolint:gomnd
 	if err != nil {
-		return nil, fmt.Errorf("resolve did: %w", err)
+		return context.Background(), fmt.Errorf("resolve did: %w", err)
 	}
 
-	s.didOwners[name] = doc.ID
-
-	return common.ContextWithSigner(ctx, name, &common.RequestSigner{
+	didOwner := &DIDOwner{
+		DID:         doc.ID,
 		PublicKeyID: doc.Authentication[0].VerificationMethod.ID,
 		PrivateKey:  pk,
+	}
+
+	s.didOwners[name] = didOwner
+
+	return common.ContextWithSignerOpts(ctx, name, &common.SignerOpts{
+		PublicKeyID: didOwner.PublicKeyID,
+		PrivateKey:  didOwner.PrivateKey,
 	}), nil
 }
 
@@ -77,27 +97,11 @@ func (s *Steps) createPolicy(ctx context.Context, policyID string, policy *godog
 		return fmt.Errorf("execute template: %w", err)
 	}
 
-	resp, err := httputil.DoRequest(ctx, "https://localhost:9014/v1/policy/"+policyID,
+	_, err = httputil.DoRequest(ctx, "https://localhost:9014/v1/policy/"+policyID,
 		httputil.WithHTTPClient(s.cs.HTTPClient), httputil.WithMethod(http.MethodPut), httputil.WithBody(buf.Bytes()),
-		httputil.WithAuthToken("gk_token"))
+		httputil.WithAuthToken(authToken))
 	if err != nil {
 		return fmt.Errorf("do request: %w", err)
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		errMessage := resp.Status
-
-		if resp.Body != nil {
-			var errResp errorResponse
-
-			if err = json.Unmarshal(resp.Body, &errResp); err != nil {
-				return fmt.Errorf("unmarshal error response: %w", err)
-			}
-
-			errMessage = fmt.Sprintf("%s: %s", errMessage, errResp.Message)
-		}
-
-		return errors.New(errMessage)
 	}
 
 	s.policyID = policyID
@@ -106,41 +110,79 @@ func (s *Steps) createPolicy(ctx context.Context, policyID string, policy *godog
 }
 
 func (s *Steps) convertIntoDID(ctx context.Context, handle, didOwner string) (context.Context, error) {
-	req := &protectReq{
+	req := &protectRequest{
 		Policy: s.policyID,
 		Target: handle,
 	}
 
 	reqBytes, err := json.Marshal(req)
 	if err != nil {
-		return nil, fmt.Errorf("marshal protect request: %w", err)
+		return context.Background(), fmt.Errorf("marshal request: %w", err)
 	}
 
-	signer, ok := common.GetSigner(ctx, didOwner)
+	owner, ok := s.didOwners[didOwner]
 	if !ok {
-		return nil, fmt.Errorf("missing %q signer in context", didOwner)
+		return context.Background(), fmt.Errorf("missing did owner %q", didOwner)
 	}
 
-	var protectResponse protectResp
+	var resp protectResponse
 
-	resp, err := httputil.DoRequest(ctx, "https://localhost:9014/v1/protect",
+	_, err = httputil.DoRequest(ctx, "https://localhost:9014/v1/protect",
 		httputil.WithMethod(http.MethodPost),
 		httputil.WithBody(reqBytes),
 		httputil.WithHTTPClient(s.cs.HTTPClient),
-		httputil.WithParsedResponse(&protectResponse),
-		httputil.WithSigner(signer))
+		httputil.WithParsedResponse(&resp),
+		httputil.WithSigner(&common.RequestSigner{
+			Headers:     []string{"(request-target)", "date", "digest"},
+			PublicKeyID: owner.PublicKeyID,
+			PrivateKey:  owner.PrivateKey,
+		}))
 	if err != nil {
-		return nil, fmt.Errorf("do protect request: %w", err)
+		return context.Background(), fmt.Errorf("do request: %w", err)
 	}
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("expected 200 OK, got: %s", resp.Status)
+	s.targetDID = resp.DID
+
+	return context.WithValue(ctx, "targetDID", s.targetDID), nil //nolint:revive,staticcheck
+}
+
+func (s *Steps) createTicket(ctx context.Context, didOwner string) (context.Context, error) {
+	req := &releaseRequest{
+		DID: s.targetDID,
 	}
 
-	return context.WithValue(ctx, "targetDID", protectResponse.DID), nil //nolint:revive,staticcheck
+	reqBytes, err := json.Marshal(req)
+	if err != nil {
+		return context.Background(), fmt.Errorf("marshal release request: %w", err)
+	}
+
+	owner, ok := s.didOwners[didOwner]
+	if !ok {
+		return context.Background(), fmt.Errorf("missing did owner %q", didOwner)
+	}
+
+	var resp releaseResponse
+
+	_, err = httputil.DoRequest(ctx, "https://localhost:9014/v1/release",
+		httputil.WithHTTPClient(s.cs.HTTPClient),
+		httputil.WithMethod(http.MethodPost),
+		httputil.WithBody(reqBytes),
+		httputil.WithParsedResponse(&resp),
+		httputil.WithSigner(&common.RequestSigner{
+			Headers:     []string{"(request-target)", "date", "digest"},
+			PublicKeyID: owner.PublicKeyID,
+			PrivateKey:  owner.PrivateKey,
+		}))
+	if err != nil {
+		return context.Background(), fmt.Errorf("do request: %w", err)
+	}
+
+	s.ticketID = resp.TicketID
+
+	return context.WithValue(ctx, "ticketID", s.ticketID), nil //nolint:revive,staticcheck
 }
 
 // GetDID is a helper function used in template to get DID by owner name.
 func (s *Steps) GetDID(didOwner string) string {
-	return s.didOwners[didOwner]
+	return s.didOwners[didOwner].DID
 }

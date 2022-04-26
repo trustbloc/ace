@@ -11,10 +11,10 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/tls"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"text/template"
 
 	"github.com/cucumber/godog"
@@ -61,9 +61,11 @@ func NewSteps(tlsConfig *tls.Config) (*Steps, error) {
 // RegisterSteps registers common scenario steps.
 func (s *Steps) RegisterSteps(sc *godog.ScenarioContext) {
 	sc.Step(`^an HTTP GET is sent to "([^"]*)"$`, s.httpGet)
-	sc.Step(`^an HTTP POST is sent to "([^"]*)"$`, s.httpPost)
-	sc.Step(`^an HTTP POST signed by "([^"]*)" is sent to "([^"]*)"$`, s.signedHTTPPost)
 	sc.Step(`^an HTTP PUT is sent to "([^"]*)"$`, s.httpPut)
+	sc.Step(`^an HTTP POST is sent to "([^"]*)"$`, s.httpPost)
+	sc.Step(`^an HTTP GET with "([^"]*)" headers signed by "([^"]*)" is sent to "([^"]*)"$`, s.httpGetSigned)
+	sc.Step(`^an HTTP POST with "([^"]*)" headers signed by "([^"]*)" is sent to "([^"]*)"$`, s.httpPostSigned)
+	sc.Step(`^an HTTP POST with "([^"]*)" headers signed by "([^"]*)" is sent to "([^"]*)" with body$`, s.httpPostSignedWithBody) //nolint:lll
 	sc.Step(`^response status is "([^"]*)"$`, s.checkResponseStatus)
 	sc.Step(`^response contains "([^"]*)" with value "([^"]*)"$`, s.checkResponseValue)
 	sc.Step(`^response contains non-empty "([^"]*)"$`, s.checkNonEmptyResponseValue)
@@ -77,112 +79,129 @@ type healthCheckResponse struct {
 func (s *Steps) HealthCheck(ctx context.Context, host string, port int) error {
 	url := fmt.Sprintf(healthCheckURL, host, port)
 
-	var healthCheckResp healthCheckResponse
+	var resp healthCheckResponse
 
-	resp, err := httputil.DoRequest(ctx, url, httputil.WithHTTPClient(s.HTTPClient),
-		httputil.WithParsedResponse(&healthCheckResp))
+	r, err := httputil.DoRequest(ctx, url, httputil.WithHTTPClient(s.HTTPClient),
+		httputil.WithParsedResponse(&resp))
 	if err != nil {
 		return fmt.Errorf("do request: %w", err)
 	}
 
-	s.responseStatus = resp.Status
-	s.responseBody = resp.Body
+	s.responseStatus = r.Status
+	s.responseBody = r.Body
 
-	if resp.StatusCode == http.StatusOK && healthCheckResp.Status == "success" {
+	if r.StatusCode == http.StatusOK && resp.Status == "success" {
 		return nil
 	}
 
 	return errors.New("health check failure")
 }
 
-func (s *Steps) httpGet(ctx context.Context, url string) error {
-	resp, err := httputil.DoRequest(ctx, url, httputil.WithHTTPClient(s.HTTPClient))
-	if err != nil {
-		return fmt.Errorf("do request: %w", err)
-	}
-
-	s.responseStatus = resp.Status
-	s.responseBody = resp.Body
-
-	return nil
-}
-
-func (s *Steps) httpPost(ctx context.Context, url string, docStr *godog.DocString) error {
-	return s.httpDo(ctx, http.MethodPost, url, docStr, httputil.WithAuthToken("gk_token"))
-}
-
 type contextKey string
 
-// ContextWithSigner returns a new context with a request signer.
-func ContextWithSigner(ctx context.Context, name string, signer *RequestSigner) context.Context {
-	return context.WithValue(ctx, contextKey(name), signer)
+// SignerOpts represents signer options.
+type SignerOpts struct {
+	PublicKeyID string
+	PrivateKey  ed25519.PrivateKey
 }
 
-// GetSigner gets signer from the context by signer name.
-func GetSigner(ctx context.Context, name string) (*RequestSigner, bool) {
-	signer, ok := ctx.Value(contextKey(name)).(*RequestSigner)
-
-	return signer, ok
+// ContextWithSignerOpts returns a new context with options for a request signer.
+func ContextWithSignerOpts(ctx context.Context, name string, opts *SignerOpts) context.Context {
+	return context.WithValue(ctx, contextKey(name), opts)
 }
 
-func (s *Steps) signedHTTPPost(ctx context.Context, signerName, url string, docStr *godog.DocString) error {
-	signer, ok := ctx.Value(contextKey(signerName)).(*RequestSigner)
-	if !ok {
-		return fmt.Errorf("missing %q signer in context", signerName)
-	}
-
-	return s.httpDo(ctx, http.MethodPost, url, docStr, httputil.WithSigner(signer))
+func (s *Steps) httpGet(ctx context.Context, url string) error {
+	return s.httpDo(ctx, http.MethodGet, url, nil)
 }
 
 func (s *Steps) httpPut(ctx context.Context, url string, docStr *godog.DocString) error {
 	return s.httpDo(ctx, http.MethodPut, url, docStr, httputil.WithAuthToken("gk_token"))
 }
 
-func (s *Steps) httpDo(ctx context.Context, method, url string, docStr *godog.DocString, opts ...httputil.Opt) error {
-	var buf bytes.Buffer
+func (s *Steps) httpPost(ctx context.Context, url string, docStr *godog.DocString) error {
+	return s.httpDo(ctx, http.MethodPost, url, docStr, httputil.WithAuthToken("gk_token"))
+}
 
-	t, err := template.New("request").Parse(docStr.Content)
+func (s *Steps) httpGetSigned(ctx context.Context, headers, signer, url string) error {
+	sig, err := getSigner(ctx, headers, signer)
 	if err != nil {
-		return fmt.Errorf("parse template: %w", err)
+		return fmt.Errorf("get signer for http get: %w", err)
 	}
 
-	err = t.Execute(&buf, ctx)
+	return s.httpDo(ctx, http.MethodGet, url, nil, httputil.WithSigner(sig))
+}
+
+func (s *Steps) httpPostSigned(ctx context.Context, headers, signer, url string) error {
+	sig, err := getSigner(ctx, headers, signer)
 	if err != nil {
-		return fmt.Errorf("execute template: %w", err)
+		return fmt.Errorf("get signer for http post: %w", err)
 	}
 
-	opts = append(opts, httputil.WithHTTPClient(s.HTTPClient),
-		httputil.WithMethod(method), httputil.WithBody(buf.Bytes()))
+	return s.httpDo(ctx, http.MethodPost, url, nil, httputil.WithSigner(sig))
+}
 
-	resp, err := httputil.DoRequest(ctx, url, opts...)
+func (s *Steps) httpPostSignedWithBody(ctx context.Context, headers, signer, url string,
+	bodyTemplate *godog.DocString) error {
+	sig, err := getSigner(ctx, headers, signer)
+	if err != nil {
+		return fmt.Errorf("get signer for http post: %w", err)
+	}
+
+	return s.httpDo(ctx, http.MethodPost, url, bodyTemplate, httputil.WithSigner(sig))
+}
+
+func getSigner(ctx context.Context, headers, signer string) (*RequestSigner, error) {
+	opts, ok := ctx.Value(contextKey(signer)).(*SignerOpts)
+	if !ok {
+		return nil, fmt.Errorf("missing %q signer options in context", signer)
+	}
+
+	return &RequestSigner{
+		Headers:     strings.Split(headers, ","),
+		PublicKeyID: opts.PublicKeyID,
+		PrivateKey:  opts.PrivateKey,
+	}, nil
+}
+
+func (s *Steps) httpDo(ctx context.Context, method, url string, bodyTemplate *godog.DocString,
+	opts ...httputil.Opt) error {
+	opts = append(opts, httputil.WithHTTPClient(s.HTTPClient), httputil.WithMethod(method))
+
+	if strings.Contains(url, "{ticket_id}") {
+		url = strings.ReplaceAll(url, "{ticket_id}", ctx.Value("ticketID").(string)) //nolint:forcetypeassert
+	}
+
+	if bodyTemplate != nil {
+		t, err := template.New("body").Parse(bodyTemplate.Content)
+		if err != nil {
+			return fmt.Errorf("parse body template: %w", err)
+		}
+
+		var buf bytes.Buffer
+
+		err = t.Execute(&buf, ctx)
+		if err != nil {
+			return fmt.Errorf("execute body template: %w", err)
+		}
+
+		opts = append(opts, httputil.WithBody(buf.Bytes()))
+	}
+
+	r, err := httputil.DoRequest(ctx, url, opts...)
 	if err != nil {
 		return fmt.Errorf("do request: %w", err)
 	}
 
-	s.responseStatus = resp.Status
-	s.responseStatusCode = resp.StatusCode
-	s.responseBody = resp.Body
+	s.responseStatus = r.Status
+	s.responseStatusCode = r.StatusCode
+	s.responseBody = r.Body
 
 	return nil
 }
 
-type errorResponse struct {
-	Message string `json:"errMessage,omitempty"`
-}
-
 func (s *Steps) checkResponseStatus(status string) error {
 	if s.responseStatus != status {
-		if s.responseBody != nil {
-			var errResp errorResponse
-
-			if err := json.Unmarshal(s.responseBody, &errResp); err != nil {
-				return fmt.Errorf("unmarshal error response: %w", err)
-			}
-
-			return fmt.Errorf("got %q", fmt.Sprintf("%s: %s", s.responseStatus, errResp.Message))
-		}
-
-		return fmt.Errorf("got %q", s.responseStatus)
+		return fmt.Errorf("expected %q, got %q", status, s.responseStatus)
 	}
 
 	return nil
@@ -208,15 +227,16 @@ func (s *Steps) checkNonEmptyResponseValue(path string) error {
 	return nil
 }
 
-// RequestSigner is a signer for HTTP Signatures auth method.
+// RequestSigner is a signer in HTTP Signatures auth method.
 type RequestSigner struct {
+	Headers     []string
 	PublicKeyID string
 	PrivateKey  ed25519.PrivateKey
 }
 
 // Sign signs an HTTP request.
 func (s *RequestSigner) Sign(req *http.Request) error {
-	signer := httpsig.NewSigner(httpsig.DefaultPostSignerConfig(), s.PrivateKey)
+	signer := httpsig.NewSigner(httpsig.SignerConfig{Headers: s.Headers}, s.PrivateKey)
 
 	if err := signer.SignRequest(s.PublicKeyID, req); err != nil {
 		return fmt.Errorf("sign request: %w", err)
