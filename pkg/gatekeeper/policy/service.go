@@ -87,3 +87,19 @@ func (s *Service) Check(_ context.Context, policyID, did string, role Role) erro
 
 	return ErrNotAllowed
 }
+
+// Get gets policy from the underlying storage by ID.
+func (s *Service) Get(_ context.Context, policyID string) (*Policy, error) {
+	b, err := s.store.Get(policyID)
+	if err != nil {
+		return nil, fmt.Errorf("get policy: %w", err)
+	}
+
+	var policy Policy
+
+	if err = json.Unmarshal(b, &policy); err != nil {
+		return nil, fmt.Errorf("unmarshal policy: %w", err)
+	}
+
+	return &policy, nil
+}

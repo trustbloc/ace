@@ -18,6 +18,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
+	"github.com/hyperledger/aries-framework-go/spi/storage"
 	"github.com/stretchr/testify/require"
 
 	"github.com/trustbloc/ace/pkg/gatekeeper/policy"
@@ -27,7 +28,10 @@ import (
 )
 
 const (
-	testSubjectDID = "did:example:subject"
+	subjectDID   = "did:example:subject"
+	targetDID    = "did:example:target"
+	testPolicyID = "test-policy"
+	testTicketID = "test-ticket"
 )
 
 func TestProtectHandler(t *testing.T) {
@@ -44,10 +48,10 @@ func TestProtectHandler(t *testing.T) {
 		protectService.EXPECT().Protect(gomock.Any(), gomock.Any(), gomock.Any()).Return(&protect.ProtectedData{}, nil)
 
 		policyService := NewMockPolicyService(ctrl)
-		policyService.EXPECT().Check(gomock.Any(), req.Policy, testSubjectDID, policy.Collector).Return(nil)
+		policyService.EXPECT().Check(gomock.Any(), req.Policy, subjectDID, policy.Collector).Return(nil)
 
 		subjectResolver := NewMockSubjectResolver(ctrl)
-		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(testSubjectDID, nil)
+		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(subjectDID, nil)
 
 		op := &operation.Operation{
 			ProtectService:  protectService,
@@ -107,11 +111,11 @@ func TestProtectHandler(t *testing.T) {
 		protectService.EXPECT().Protect(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 		policyService := NewMockPolicyService(ctrl)
-		policyService.EXPECT().Check(gomock.Any(), req.Policy, testSubjectDID, policy.Collector).
+		policyService.EXPECT().Check(gomock.Any(), req.Policy, subjectDID, policy.Collector).
 			Return(policy.ErrNotAllowed)
 
 		subjectResolver := NewMockSubjectResolver(ctrl)
-		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(testSubjectDID, nil)
+		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(subjectDID, nil)
 
 		op := &operation.Operation{
 			ProtectService:  protectService,
@@ -135,11 +139,11 @@ func TestProtectHandler(t *testing.T) {
 		protectService.EXPECT().Protect(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 		policyService := NewMockPolicyService(ctrl)
-		policyService.EXPECT().Check(gomock.Any(), req.Policy, testSubjectDID, policy.Collector).
+		policyService.EXPECT().Check(gomock.Any(), req.Policy, subjectDID, policy.Collector).
 			Return(errors.New("policy check error"))
 
 		subjectResolver := NewMockSubjectResolver(ctrl)
-		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(testSubjectDID, nil)
+		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(subjectDID, nil)
 
 		op := &operation.Operation{
 			ProtectService:  protectService,
@@ -164,10 +168,10 @@ func TestProtectHandler(t *testing.T) {
 			Return(nil, errors.New("protect failed"))
 
 		policyService := NewMockPolicyService(ctrl)
-		policyService.EXPECT().Check(gomock.Any(), req.Policy, testSubjectDID, policy.Collector).Return(nil)
+		policyService.EXPECT().Check(gomock.Any(), req.Policy, subjectDID, policy.Collector).Return(nil)
 
 		subjectResolver := NewMockSubjectResolver(ctrl)
-		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(testSubjectDID, nil)
+		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(subjectDID, nil)
 
 		op := &operation.Operation{
 			ProtectService:  protectService,
@@ -249,30 +253,25 @@ func TestCreatePolicyHandler(t *testing.T) {
 }
 
 func TestReleaseHandler(t *testing.T) {
-	const (
-		testDID      = "did:example:test"
-		testPolicyID = "test-policy"
-	)
-
 	req := operation.ReleaseRequest{
-		DID: testDID,
+		DID: targetDID,
 	}
 
 	t.Run("Success", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		releaseService := NewMockReleaseService(ctrl)
-		releaseService.EXPECT().Release(gomock.Any(), testDID).Return(&ticket.Ticket{}, nil).Times(1)
+		releaseService.EXPECT().Release(gomock.Any(), targetDID).Return(&ticket.Ticket{}, nil).Times(1)
 
 		protectService := NewMockProtectService(ctrl)
-		protectService.EXPECT().Get(gomock.Any(), testDID).
+		protectService.EXPECT().Get(gomock.Any(), targetDID).
 			Return(&protect.ProtectedData{PolicyID: testPolicyID}, nil).Times(1)
 
 		policyService := NewMockPolicyService(ctrl)
-		policyService.EXPECT().Check(gomock.Any(), testPolicyID, testSubjectDID, policy.Handler).Return(nil).Times(1)
+		policyService.EXPECT().Check(gomock.Any(), testPolicyID, subjectDID, policy.Handler).Return(nil).Times(1)
 
 		subjectResolver := NewMockSubjectResolver(ctrl)
-		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(testSubjectDID, nil)
+		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(subjectDID, nil)
 
 		op := &operation.Operation{
 			ReleaseService:  releaseService,
@@ -293,7 +292,7 @@ func TestReleaseHandler(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		svc := NewMockReleaseService(ctrl)
-		svc.EXPECT().Release(gomock.Any(), testDID).Times(0)
+		svc.EXPECT().Release(gomock.Any(), targetDID).Times(0)
 
 		op := &operation.Operation{
 			ReleaseService: svc,
@@ -311,7 +310,7 @@ func TestReleaseHandler(t *testing.T) {
 		releaseService.EXPECT().Release(gomock.Any(), gomock.Any()).Times(0)
 
 		protectService := NewMockProtectService(ctrl)
-		protectService.EXPECT().Get(gomock.Any(), testDID).Return(nil, errors.New("get error")).Times(1)
+		protectService.EXPECT().Get(gomock.Any(), targetDID).Return(nil, errors.New("get error")).Times(1)
 
 		policyService := NewMockPolicyService(ctrl)
 		policyService.EXPECT().Check(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
@@ -341,15 +340,15 @@ func TestReleaseHandler(t *testing.T) {
 		releaseService.EXPECT().Release(gomock.Any(), gomock.Any()).Times(0)
 
 		protectService := NewMockProtectService(ctrl)
-		protectService.EXPECT().Get(gomock.Any(), testDID).
+		protectService.EXPECT().Get(gomock.Any(), targetDID).
 			Return(&protect.ProtectedData{PolicyID: testPolicyID}, nil).Times(1)
 
 		policyService := NewMockPolicyService(ctrl)
-		policyService.EXPECT().Check(gomock.Any(), testPolicyID, testSubjectDID, policy.Handler).
+		policyService.EXPECT().Check(gomock.Any(), testPolicyID, subjectDID, policy.Handler).
 			Return(policy.ErrNotAllowed).Times(1)
 
 		subjectResolver := NewMockSubjectResolver(ctrl)
-		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(testSubjectDID, nil)
+		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(subjectDID, nil)
 
 		op := &operation.Operation{
 			ReleaseService:  releaseService,
@@ -370,17 +369,17 @@ func TestReleaseHandler(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		releaseService := NewMockReleaseService(ctrl)
-		releaseService.EXPECT().Release(gomock.Any(), testDID).Return(nil, errors.New("release error"))
+		releaseService.EXPECT().Release(gomock.Any(), targetDID).Return(nil, errors.New("release error"))
 
 		protectService := NewMockProtectService(ctrl)
-		protectService.EXPECT().Get(gomock.Any(), testDID).
+		protectService.EXPECT().Get(gomock.Any(), targetDID).
 			Return(&protect.ProtectedData{PolicyID: testPolicyID}, nil).Times(1)
 
 		policyService := NewMockPolicyService(ctrl)
-		policyService.EXPECT().Check(gomock.Any(), testPolicyID, testSubjectDID, policy.Handler).Return(nil).Times(1)
+		policyService.EXPECT().Check(gomock.Any(), testPolicyID, subjectDID, policy.Handler).Return(nil).Times(1)
 
 		subjectResolver := NewMockSubjectResolver(ctrl)
-		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(testSubjectDID, nil)
+		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(subjectDID, nil)
 
 		op := &operation.Operation{
 			ReleaseService:  releaseService,
@@ -395,6 +394,283 @@ func TestReleaseHandler(t *testing.T) {
 		rr := handleRequest(t, op, "/v1/release", http.MethodPost, bytes.NewReader(body))
 
 		require.Equal(t, http.StatusInternalServerError, rr.Code)
+	})
+}
+
+func TestAuthorizeHandler(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		releaseService := NewMockReleaseService(ctrl)
+		releaseService.EXPECT().Get(gomock.Any(), testTicketID).Return(&ticket.Ticket{
+			ID:     testTicketID,
+			DID:    targetDID,
+			Status: 0,
+		}, nil)
+		releaseService.EXPECT().Authorize(gomock.Any(), testTicketID, subjectDID).Return(nil)
+
+		protectService := NewMockProtectService(ctrl)
+		protectService.EXPECT().Get(gomock.Any(), targetDID).Return(&protect.ProtectedData{
+			PolicyID: testPolicyID,
+		}, nil)
+
+		policyService := NewMockPolicyService(ctrl)
+		policyService.EXPECT().Check(gomock.Any(), testPolicyID, subjectDID, policy.Approver).Return(nil)
+
+		subjectResolver := NewMockSubjectResolver(ctrl)
+		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(subjectDID, nil)
+
+		op := &operation.Operation{
+			ReleaseService:  releaseService,
+			PolicyService:   policyService,
+			ProtectService:  protectService,
+			SubjectResolver: subjectResolver,
+		}
+
+		rr := handleRequest(t, op, "/v1/release/test-ticket/authorize", http.MethodPost, nil)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+	})
+
+	t.Run("Ticket not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		releaseService := NewMockReleaseService(ctrl)
+		releaseService.EXPECT().Get(gomock.Any(), testTicketID).Return(nil, storage.ErrDataNotFound)
+
+		op := &operation.Operation{
+			ReleaseService: releaseService,
+		}
+
+		rr := handleRequest(t, op, "/v1/release/test-ticket/authorize", http.MethodPost, nil)
+
+		require.Equal(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("Fail to get ticket", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		releaseService := NewMockReleaseService(ctrl)
+		releaseService.EXPECT().Get(gomock.Any(), testTicketID).Return(nil, errors.New("get error"))
+
+		op := &operation.Operation{
+			ReleaseService: releaseService,
+		}
+
+		rr := handleRequest(t, op, "/v1/release/test-ticket/authorize", http.MethodPost, nil)
+
+		require.Equal(t, http.StatusInternalServerError, rr.Code)
+	})
+
+	t.Run("Fail to get protected data", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		releaseService := NewMockReleaseService(ctrl)
+		releaseService.EXPECT().Get(gomock.Any(), testTicketID).Return(&ticket.Ticket{
+			ID:     testTicketID,
+			DID:    targetDID,
+			Status: 0,
+		}, nil)
+
+		protectService := NewMockProtectService(ctrl)
+		protectService.EXPECT().Get(gomock.Any(), targetDID).Return(nil, errors.New("get error"))
+
+		op := &operation.Operation{
+			ReleaseService: releaseService,
+			ProtectService: protectService,
+		}
+
+		rr := handleRequest(t, op, "/v1/release/test-ticket/authorize", http.MethodPost, nil)
+
+		require.Equal(t, http.StatusInternalServerError, rr.Code)
+	})
+
+	t.Run("Not allowed per policy", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		releaseService := NewMockReleaseService(ctrl)
+		releaseService.EXPECT().Get(gomock.Any(), testTicketID).Return(&ticket.Ticket{
+			ID:     testTicketID,
+			DID:    targetDID,
+			Status: 0,
+		}, nil)
+
+		protectService := NewMockProtectService(ctrl)
+		protectService.EXPECT().Get(gomock.Any(), targetDID).Return(&protect.ProtectedData{
+			PolicyID: testPolicyID,
+		}, nil)
+
+		policyService := NewMockPolicyService(ctrl)
+		policyService.EXPECT().Check(gomock.Any(), testPolicyID, subjectDID, policy.Approver).Return(policy.ErrNotAllowed)
+
+		subjectResolver := NewMockSubjectResolver(ctrl)
+		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(subjectDID, nil)
+
+		op := &operation.Operation{
+			ReleaseService:  releaseService,
+			PolicyService:   policyService,
+			ProtectService:  protectService,
+			SubjectResolver: subjectResolver,
+		}
+
+		rr := handleRequest(t, op, "/v1/release/test-ticket/authorize", http.MethodPost, nil)
+
+		require.Equal(t, http.StatusUnauthorized, rr.Code)
+	})
+
+	t.Run("Fail to authorize ticket", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		releaseService := NewMockReleaseService(ctrl)
+		releaseService.EXPECT().Get(gomock.Any(), testTicketID).Return(&ticket.Ticket{
+			ID:     testTicketID,
+			DID:    targetDID,
+			Status: 0,
+		}, nil)
+		releaseService.EXPECT().Authorize(gomock.Any(), testTicketID, subjectDID).Return(errors.New("authorize error"))
+
+		protectService := NewMockProtectService(ctrl)
+		protectService.EXPECT().Get(gomock.Any(), targetDID).Return(&protect.ProtectedData{
+			PolicyID: testPolicyID,
+		}, nil)
+
+		policyService := NewMockPolicyService(ctrl)
+		policyService.EXPECT().Check(gomock.Any(), testPolicyID, subjectDID, policy.Approver).Return(nil)
+
+		subjectResolver := NewMockSubjectResolver(ctrl)
+		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(subjectDID, nil)
+
+		op := &operation.Operation{
+			ReleaseService:  releaseService,
+			PolicyService:   policyService,
+			ProtectService:  protectService,
+			SubjectResolver: subjectResolver,
+		}
+
+		rr := handleRequest(t, op, "/v1/release/test-ticket/authorize", http.MethodPost, nil)
+
+		require.Equal(t, http.StatusInternalServerError, rr.Code)
+	})
+}
+
+func TestTicketStatusHandler(t *testing.T) {
+	t.Run("Success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		releaseService := NewMockReleaseService(ctrl)
+		releaseService.EXPECT().Get(gomock.Any(), testTicketID).Return(&ticket.Ticket{
+			ID:     testTicketID,
+			DID:    targetDID,
+			Status: 0,
+		}, nil)
+
+		protectService := NewMockProtectService(ctrl)
+		protectService.EXPECT().Get(gomock.Any(), targetDID).Return(&protect.ProtectedData{
+			PolicyID: testPolicyID,
+		}, nil)
+
+		policyService := NewMockPolicyService(ctrl)
+		policyService.EXPECT().Check(gomock.Any(), testPolicyID, subjectDID, policy.Handler).Return(nil)
+
+		subjectResolver := NewMockSubjectResolver(ctrl)
+		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(subjectDID, nil)
+
+		op := &operation.Operation{
+			ReleaseService:  releaseService,
+			PolicyService:   policyService,
+			ProtectService:  protectService,
+			SubjectResolver: subjectResolver,
+		}
+
+		rr := handleRequest(t, op, "/v1/release/test-ticket/status", http.MethodGet, nil)
+
+		require.Equal(t, http.StatusOK, rr.Code)
+	})
+
+	t.Run("Ticket not found", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		releaseService := NewMockReleaseService(ctrl)
+		releaseService.EXPECT().Get(gomock.Any(), testTicketID).Return(nil, storage.ErrDataNotFound)
+
+		op := &operation.Operation{
+			ReleaseService: releaseService,
+		}
+
+		rr := handleRequest(t, op, "/v1/release/test-ticket/status", http.MethodGet, nil)
+
+		require.Equal(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("Fail to get ticket", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		releaseService := NewMockReleaseService(ctrl)
+		releaseService.EXPECT().Get(gomock.Any(), testTicketID).Return(nil, errors.New("get error"))
+
+		op := &operation.Operation{
+			ReleaseService: releaseService,
+		}
+
+		rr := handleRequest(t, op, "/v1/release/test-ticket/status", http.MethodGet, nil)
+
+		require.Equal(t, http.StatusInternalServerError, rr.Code)
+	})
+
+	t.Run("Fail to get protected data", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		releaseService := NewMockReleaseService(ctrl)
+		releaseService.EXPECT().Get(gomock.Any(), testTicketID).Return(&ticket.Ticket{
+			ID:     testTicketID,
+			DID:    targetDID,
+			Status: 0,
+		}, nil)
+
+		protectService := NewMockProtectService(ctrl)
+		protectService.EXPECT().Get(gomock.Any(), targetDID).Return(nil, errors.New("get error"))
+
+		op := &operation.Operation{
+			ReleaseService: releaseService,
+			ProtectService: protectService,
+		}
+
+		rr := handleRequest(t, op, "/v1/release/test-ticket/status", http.MethodGet, nil)
+
+		require.Equal(t, http.StatusInternalServerError, rr.Code)
+	})
+
+	t.Run("Not allowed per policy", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		releaseService := NewMockReleaseService(ctrl)
+		releaseService.EXPECT().Get(gomock.Any(), testTicketID).Return(&ticket.Ticket{
+			ID:     testTicketID,
+			DID:    targetDID,
+			Status: 0,
+		}, nil)
+
+		protectService := NewMockProtectService(ctrl)
+		protectService.EXPECT().Get(gomock.Any(), targetDID).Return(&protect.ProtectedData{
+			PolicyID: testPolicyID,
+		}, nil)
+
+		policyService := NewMockPolicyService(ctrl)
+		policyService.EXPECT().Check(gomock.Any(), testPolicyID, subjectDID, policy.Handler).Return(policy.ErrNotAllowed)
+
+		subjectResolver := NewMockSubjectResolver(ctrl)
+		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(subjectDID, nil)
+
+		op := &operation.Operation{
+			ReleaseService:  releaseService,
+			PolicyService:   policyService,
+			ProtectService:  protectService,
+			SubjectResolver: subjectResolver,
+		}
+
+		rr := handleRequest(t, op, "/v1/release/test-ticket/status", http.MethodGet, nil)
+
+		require.Equal(t, http.StatusUnauthorized, rr.Code)
 	})
 }
 

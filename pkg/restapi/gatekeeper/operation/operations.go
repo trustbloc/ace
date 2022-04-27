@@ -19,6 +19,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/hyperledger/aries-framework-go/pkg/common/log"
+	"github.com/hyperledger/aries-framework-go/spi/storage"
 
 	"github.com/trustbloc/ace/pkg/gatekeeper/policy"
 	"github.com/trustbloc/ace/pkg/gatekeeper/protect"
@@ -28,11 +29,14 @@ import (
 )
 
 const (
-	policyIDVarName = "policy_id"
-	baseV1Path      = "/v1"
-	protectEndpoint = baseV1Path + "/protect"
-	policyEndpoint  = baseV1Path + "/policy/{" + policyIDVarName + "}"
-	releaseEndpoint = baseV1Path + "/release"
+	policyIDVarName      = "policy_id"
+	ticketIDVarName      = "ticket_id"
+	baseV1Path           = "/v1"
+	protectEndpoint      = baseV1Path + "/protect"
+	policyEndpoint       = baseV1Path + "/policy/{" + policyIDVarName + "}"
+	releaseEndpoint      = baseV1Path + "/release"
+	authorizeEndpoint    = releaseEndpoint + "/{" + ticketIDVarName + "}/authorize"
+	ticketStatusEndpoint = releaseEndpoint + "/{" + ticketIDVarName + "}/status"
 )
 
 var logger = log.New("gatekeeper")
@@ -49,6 +53,8 @@ type protectService interface {
 
 type releaseService interface {
 	Release(ctx context.Context, did string) (*ticket.Ticket, error)
+	Get(ctx context.Context, ticketID string) (*ticket.Ticket, error)
+	Authorize(ctx context.Context, ticketID, approverDID string) error
 }
 
 type subjectResolver interface {
@@ -69,6 +75,8 @@ func (o *Operation) GetRESTHandlers() []handler.Handler {
 		handler.NewHTTPHandler(policyEndpoint, http.MethodPut, o.createPolicyHandler, handler.WithAuth(handler.AuthToken)),
 		handler.NewHTTPHandler(protectEndpoint, http.MethodPost, o.protectHandler, handler.WithAuth(handler.AuthHTTPSig)),
 		handler.NewHTTPHandler(releaseEndpoint, http.MethodPost, o.releaseHandler, handler.WithAuth(handler.AuthHTTPSig)),
+		handler.NewHTTPHandler(authorizeEndpoint, http.MethodPost, o.authorizeHandler, handler.WithAuth(handler.AuthHTTPSig)),
+		handler.NewHTTPHandler(ticketStatusEndpoint, http.MethodGet, o.ticketStatusHandler, handler.WithAuth(handler.AuthHTTPSig)), //nolint:lll
 	}
 }
 
@@ -104,7 +112,7 @@ func (o *Operation) protectHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = o.checkPolicy(r.Context(), req.Policy, policy.Collector); err != nil {
+	if _, err = o.checkPolicy(r.Context(), req.Policy, policy.Collector); err != nil {
 		respondError(rw, err.(*policyError).status, err) //nolint:errorlint,forcetypeassert
 
 		return
@@ -137,7 +145,7 @@ func (o *Operation) releaseHandler(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = o.checkPolicy(r.Context(), protectedData.PolicyID, policy.Handler); err != nil {
+	if _, err = o.checkPolicy(r.Context(), protectedData.PolicyID, policy.Handler); err != nil {
 		respondError(rw, err.(*policyError).status, err) //nolint:errorlint,forcetypeassert
 
 		return
@@ -153,6 +161,74 @@ func (o *Operation) releaseHandler(rw http.ResponseWriter, r *http.Request) {
 	respond(rw, http.StatusOK, &ReleaseResponse{TicketID: t.ID})
 }
 
+func (o *Operation) authorizeHandler(rw http.ResponseWriter, r *http.Request) {
+	ticketID := mux.Vars(r)[ticketIDVarName]
+
+	t, err := o.ReleaseService.Get(r.Context(), ticketID)
+	if err != nil {
+		if errors.Is(err, storage.ErrDataNotFound) {
+			respondError(rw, http.StatusBadRequest, err)
+		}
+
+		respondError(rw, http.StatusInternalServerError, err)
+
+		return
+	}
+
+	protectedData, err := o.ProtectService.Get(r.Context(), t.DID)
+	if err != nil {
+		respondError(rw, http.StatusInternalServerError, err)
+
+		return
+	}
+
+	var sub string
+
+	if sub, err = o.checkPolicy(r.Context(), protectedData.PolicyID, policy.Approver); err != nil {
+		respondError(rw, err.(*policyError).status, err) //nolint:errorlint,forcetypeassert
+
+		return
+	}
+
+	if err = o.ReleaseService.Authorize(r.Context(), ticketID, sub); err != nil {
+		respondError(rw, http.StatusInternalServerError, err)
+
+		return
+	}
+
+	respond(rw, http.StatusOK, nil)
+}
+
+func (o *Operation) ticketStatusHandler(rw http.ResponseWriter, r *http.Request) {
+	ticketID := mux.Vars(r)[ticketIDVarName]
+
+	t, err := o.ReleaseService.Get(r.Context(), ticketID)
+	if err != nil {
+		if errors.Is(err, storage.ErrDataNotFound) {
+			respondError(rw, http.StatusBadRequest, err)
+		}
+
+		respondError(rw, http.StatusInternalServerError, err)
+
+		return
+	}
+
+	protectedData, err := o.ProtectService.Get(r.Context(), t.DID)
+	if err != nil {
+		respondError(rw, http.StatusInternalServerError, err)
+
+		return
+	}
+
+	if _, err = o.checkPolicy(r.Context(), protectedData.PolicyID, policy.Handler); err != nil {
+		respondError(rw, err.(*policyError).status, err) //nolint:errorlint,forcetypeassert
+
+		return
+	}
+
+	respond(rw, http.StatusOK, &TicketStatusResponse{Status: t.Status.String()})
+}
+
 type policyError struct {
 	status int
 	err    error
@@ -166,25 +242,25 @@ func (e *policyError) Error() string {
 	return ""
 }
 
-func (o *Operation) checkPolicy(ctx context.Context, policyID string, role policy.Role) error {
+func (o *Operation) checkPolicy(ctx context.Context, policyID string, role policy.Role) (string, error) {
 	sub, err := o.SubjectResolver.Resolve(ctx)
 	if err != nil {
-		return &policyError{status: http.StatusUnauthorized, err: err}
+		return "", &policyError{status: http.StatusUnauthorized, err: err}
 	}
 
 	err = o.PolicyService.Check(ctx, policyID, sub, role)
 	if err != nil {
 		if errors.Is(err, policy.ErrNotAllowed) {
-			return &policyError{status: http.StatusUnauthorized, err: err}
+			return "", &policyError{status: http.StatusUnauthorized, err: err}
 		}
 
-		return &policyError{status: http.StatusInternalServerError, err: err}
+		return "", &policyError{status: http.StatusInternalServerError, err: err}
 	}
 
-	return nil
+	return sub, nil
 }
 
-func respond(w http.ResponseWriter, statusCode int, payload interface{}) {
+func respond(w http.ResponseWriter, statusCode int, payload interface{}) { //nolint:unparam
 	w.Header().Add("Content-Type", "application/json")
 
 	w.WriteHeader(statusCode)

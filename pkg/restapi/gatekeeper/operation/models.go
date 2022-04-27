@@ -26,3 +26,8 @@ type ReleaseRequest struct {
 type ReleaseResponse struct {
 	TicketID string `json:"ticket_id"`
 }
+
+// TicketStatusResponse is a response with status of the ticket.
+type TicketStatusResponse struct {
+	Status string `json:"status"`
+}

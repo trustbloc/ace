@@ -63,7 +63,6 @@ Feature: Gatekeeper API
     Then  response status is "200 OK"
      And  response contains non-empty "ticket_id"
 
-  @wip
   Scenario: Authorize a ticket by 2 approvers
     Given did owner with name "Intake Processor"
       And did owner with name "Handler"
