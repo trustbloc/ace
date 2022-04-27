@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 
+	httptransport "github.com/go-openapi/runtime/client"
+	"github.com/go-openapi/strfmt"
 	"github.com/gorilla/mux"
 	"github.com/hyperledger/aries-framework-go-ext/component/vdr/orb"
 	"github.com/hyperledger/aries-framework-go/pkg/common/log"
@@ -25,6 +27,8 @@ import (
 	tlsutils "github.com/trustbloc/edge-core/pkg/utils/tls"
 
 	"github.com/trustbloc/ace/cmd/common"
+	compclient "github.com/trustbloc/ace/pkg/client/comparator/client"
+	"github.com/trustbloc/ace/pkg/client/comparator/client/operations"
 	vaultclient "github.com/trustbloc/ace/pkg/client/vault"
 	"github.com/trustbloc/ace/pkg/restapi/gatekeeper"
 	"github.com/trustbloc/ace/pkg/restapi/handler"
@@ -83,6 +87,11 @@ const (
 	vaultServerURLFlagUsage = "URL of the vault server. This field is mandatory."
 	vaultServerURLEnvKey    = "GK_VAULT_SERVER_URL"
 
+	// comparator server url.
+	comparatorURLFlagName  = "comparator-url"
+	comparatorURLFlagUsage = "URL of the comparator. This field is mandatory."
+	comparatorURLEnvKey    = "GK_COMPARATOR_URL"
+
 	// vc issuer server url.
 	vcIssuerURLFlagName  = "vc-issuer-url"
 	vcIssuerURLFlagUsage = "URL of the VC VCIssuer service. This field is mandatory."
@@ -121,6 +130,7 @@ type serviceParameters struct {
 	vcRequestTokens     map[string]string
 	vcIssuerURL         string
 	vaultServerURL      string
+	comparatorURL       string
 	authToken           string
 }
 
@@ -232,6 +242,12 @@ func getParameters(cmd *cobra.Command) (*serviceParameters, error) { //nolint: f
 		return nil, err
 	}
 
+	comparatorURL, err := cmdutils.GetUserSetVarFromString(cmd, comparatorURLFlagName,
+		comparatorURLEnvKey, false)
+	if err != nil {
+		return nil, err
+	}
+
 	vcIssuerURL, err := cmdutils.GetUserSetVarFromString(cmd, vcIssuerURLFlagName, vcIssuerURLEnvKey, false)
 	if err != nil {
 		return nil, err
@@ -255,6 +271,7 @@ func getParameters(cmd *cobra.Command) (*serviceParameters, error) { //nolint: f
 		vcRequestTokens:     vcRequestTokens,
 		vcIssuerURL:         vcIssuerURL,
 		vaultServerURL:      vaultServerURL,
+		comparatorURL:       comparatorURL,
 		authToken:           authToken,
 	}, err
 }
@@ -269,6 +286,7 @@ func createFlags(cmd *cobra.Command) {
 	cmd.Flags().StringP(didResolverURLFlagName, "", "", didResolverURLFlagUsage)
 	cmd.Flags().StringArrayP(contextProviderFlagName, "", []string{}, contextProviderFlagUsage)
 	cmd.Flags().StringP(vaultServerURLFlagName, "", "", vaultServerURLFlagUsage)
+	cmd.Flags().StringP(comparatorURLFlagName, "", "", comparatorURLFlagUsage)
 	cmd.Flags().StringP(vcIssuerURLFlagName, "", "", vcIssuerURLFlagUsage)
 	cmd.Flags().StringArrayP(vcRequestTokensFlagName, "", []string{}, vcRequestTokensFlagUsage)
 	cmd.Flags().StringP(authTokenFlagName, "", "", authTokenFlagUsage)
@@ -320,6 +338,8 @@ func startService(params *serviceParameters, srv server) error { // nolint: funl
 
 	vClient := vaultclient.New(params.vaultServerURL, vaultclient.WithHTTPClient(httpClient))
 
+	compClient := createComparatorClient(params.comparatorURL, httpClient)
+
 	vcIssuer := vcissuer.New(&vcissuer.Config{
 		VCIssuerURL:    params.vcIssuerURL,
 		AuthToken:      params.vcRequestTokens[vcsIssuerRequestTokenName],
@@ -328,10 +348,11 @@ func startService(params *serviceParameters, srv server) error { // nolint: funl
 	})
 
 	service, err := gatekeeper.New(&gatekeeper.Config{
-		StorageProvider: storeProvider,
-		VaultClient:     vClient,
-		VDR:             vdr,
-		VCIssuer:        vcIssuer,
+		StorageProvider:  storeProvider,
+		VaultClient:      vClient,
+		ComparatorClient: compClient,
+		VDR:              vdr,
+		VCIssuer:         vcIssuer,
 	})
 	if err != nil {
 		return err
@@ -375,6 +396,19 @@ func startService(params *serviceParameters, srv server) error { // nolint: funl
 				"Authorization",
 			},
 		}).Handler(router))
+}
+
+func createComparatorClient(comparatorURL string, httpClient *http.Client) operations.ClientService {
+	urlParts := strings.Split(comparatorURL, "://")
+
+	transport := httptransport.NewWithClient(
+		urlParts[1],
+		compclient.DefaultBasePath,
+		[]string{urlParts[0]},
+		httpClient,
+	)
+
+	return compclient.New(transport, strfmt.Default).Operations
 }
 
 func getVCRequestTokens(cmd *cobra.Command) (map[string]string, error) {

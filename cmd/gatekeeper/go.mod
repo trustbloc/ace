@@ -9,6 +9,8 @@ go 1.18
 replace github.com/trustbloc/ace => ../..
 
 require (
+	github.com/go-openapi/runtime v0.23.2
+	github.com/go-openapi/strfmt v0.21.2
 	github.com/gorilla/mux v1.8.0
 	github.com/hyperledger/aries-framework-go v0.1.9-0.20220412155017-81442062e607
 	github.com/hyperledger/aries-framework-go-ext/component/vdr/orb v1.0.0-rc.1
@@ -20,7 +22,10 @@ require (
 )
 
 require (
+	github.com/PuerkitoBio/purell v1.1.1 // indirect
+	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/VictoriaMetrics/fastcache v1.5.7 // indirect
+	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/bluele/gcache v0.0.2 // indirect
 	github.com/btcsuite/btcd v0.22.0-beta // indirect
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce // indirect
@@ -32,6 +37,14 @@ require (
 	github.com/fxamacker/cbor/v2 v2.3.0 // indirect
 	github.com/go-kivik/couchdb/v3 v3.2.8 // indirect
 	github.com/go-kivik/kivik/v3 v3.2.3 // indirect
+	github.com/go-openapi/analysis v0.21.2 // indirect
+	github.com/go-openapi/errors v0.20.2 // indirect
+	github.com/go-openapi/jsonpointer v0.19.5 // indirect
+	github.com/go-openapi/jsonreference v0.19.6 // indirect
+	github.com/go-openapi/loads v0.21.1 // indirect
+	github.com/go-openapi/spec v0.20.4 // indirect
+	github.com/go-openapi/swag v0.21.1 // indirect
+	github.com/go-openapi/validate v0.21.0 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
@@ -51,16 +64,20 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/ipfs/go-cid v0.0.7 // indirect
 	github.com/jinzhu/copier v0.0.0-20190924061706-b57f9002281a // indirect
+	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kilic/bls12-381 v0.1.1-0.20210503002446-7b7597926c69 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
+	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 // indirect
 	github.com/minio/sha256-simd v0.1.1 // indirect
+	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	github.com/mr-tron/base58 v1.2.0 // indirect
 	github.com/multiformats/go-base32 v0.0.3 // indirect
 	github.com/multiformats/go-base36 v0.1.0 // indirect
 	github.com/multiformats/go-multibase v0.0.3 // indirect
 	github.com/multiformats/go-multihash v0.0.14 // indirect
 	github.com/multiformats/go-varint v0.0.6 // indirect
+	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/piprate/json-gold v0.4.1 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
@@ -92,5 +109,6 @@ require (
 	google.golang.org/genproto v0.0.0-20220222213610-43724f9ea8cf // indirect
 	google.golang.org/grpc v1.44.0 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )

@@ -674,6 +674,289 @@ func TestTicketStatusHandler(t *testing.T) {
 	})
 }
 
+func TestCollectHandler(t *testing.T) {
+	const (
+		testDID      = "did:example:test"
+		testPolicyID = "test-policy"
+		testTicketID = "ticket1234"
+		testQueryID  = "queryID1234"
+	)
+
+	protectedData := &protect.ProtectedData{PolicyID: testPolicyID}
+
+	t.Run("Success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		releaseService := NewMockReleaseService(ctrl)
+		releaseService.EXPECT().Get(gomock.Any(), testTicketID).
+			Return(&ticket.Ticket{DID: testDID, Status: ticket.ReadyToCollect}, nil)
+
+		collectService := NewMockCollectService(ctrl)
+		collectService.EXPECT().Collect(gomock.Any(), protectedData, subjectDID).Return(testQueryID, nil)
+
+		protectService := NewMockProtectService(ctrl)
+		protectService.EXPECT().Get(gomock.Any(), testDID).
+			Return(protectedData, nil)
+
+		policyService := NewMockPolicyService(ctrl)
+		policyService.EXPECT().Check(gomock.Any(), testPolicyID, subjectDID, policy.Handler).Return(nil)
+
+		subjectResolver := NewMockSubjectResolver(ctrl)
+		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(subjectDID, nil).AnyTimes()
+
+		op := &operation.Operation{
+			ReleaseService:  releaseService,
+			PolicyService:   policyService,
+			ProtectService:  protectService,
+			SubjectResolver: subjectResolver,
+			CollectService:  collectService,
+		}
+
+		rr := handleRequest(t, op, "/v1/release/"+testTicketID+"/collect", http.MethodPost, bytes.NewReader([]byte{}))
+
+		require.Equal(t, http.StatusOK, rr.Code)
+	})
+
+	t.Run("Fail to get protected data", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		releaseService := NewMockReleaseService(ctrl)
+		releaseService.EXPECT().Get(gomock.Any(), testTicketID).
+			Return(&ticket.Ticket{DID: testDID, Status: ticket.ReadyToCollect}, nil).AnyTimes()
+
+		collectService := NewMockCollectService(ctrl)
+		collectService.EXPECT().Collect(gomock.Any(), protectedData, subjectDID).
+			Return(testQueryID, nil).AnyTimes()
+
+		protectService := NewMockProtectService(ctrl)
+		protectService.EXPECT().Get(gomock.Any(), testDID).Return(nil, errors.New("get error"))
+
+		policyService := NewMockPolicyService(ctrl)
+		policyService.EXPECT().Check(gomock.Any(), testPolicyID, subjectDID, policy.Handler).
+			Return(nil).AnyTimes()
+
+		subjectResolver := NewMockSubjectResolver(ctrl)
+		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(subjectDID, nil).AnyTimes()
+
+		op := &operation.Operation{
+			ReleaseService:  releaseService,
+			PolicyService:   policyService,
+			ProtectService:  protectService,
+			SubjectResolver: subjectResolver,
+			CollectService:  collectService,
+		}
+
+		rr := handleRequest(t, op, "/v1/release/"+testTicketID+"/collect", http.MethodPost, bytes.NewReader([]byte{}))
+
+		require.Equal(t, http.StatusInternalServerError, rr.Code)
+	})
+
+	t.Run("Fail to get ticket", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		releaseService := NewMockReleaseService(ctrl)
+		releaseService.EXPECT().Get(gomock.Any(), testTicketID).
+			Return(nil, errors.New("get error"))
+
+		collectService := NewMockCollectService(ctrl)
+		collectService.EXPECT().Collect(gomock.Any(), protectedData, subjectDID).
+			Return(testQueryID, nil).AnyTimes()
+
+		protectService := NewMockProtectService(ctrl)
+		protectService.EXPECT().Get(gomock.Any(), testDID).Return(protectedData, nil).AnyTimes()
+
+		policyService := NewMockPolicyService(ctrl)
+		policyService.EXPECT().Check(gomock.Any(), testPolicyID, subjectDID, policy.Handler).
+			Return(nil).AnyTimes()
+
+		subjectResolver := NewMockSubjectResolver(ctrl)
+		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(subjectDID, nil).AnyTimes()
+
+		op := &operation.Operation{
+			ReleaseService:  releaseService,
+			PolicyService:   policyService,
+			ProtectService:  protectService,
+			SubjectResolver: subjectResolver,
+			CollectService:  collectService,
+		}
+
+		rr := handleRequest(t, op, "/v1/release/"+testTicketID+"/collect", http.MethodPost, bytes.NewReader([]byte{}))
+
+		require.Equal(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("Fail to check policy: ErrNotAllowed", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		releaseService := NewMockReleaseService(ctrl)
+		releaseService.EXPECT().Get(gomock.Any(), testTicketID).
+			Return(&ticket.Ticket{DID: testDID, Status: ticket.ReadyToCollect}, nil).AnyTimes()
+
+		collectService := NewMockCollectService(ctrl)
+		collectService.EXPECT().Collect(gomock.Any(), protectedData, subjectDID).
+			Return(testQueryID, nil).AnyTimes()
+
+		protectService := NewMockProtectService(ctrl)
+		protectService.EXPECT().Get(gomock.Any(), testDID).Return(protectedData, nil).AnyTimes()
+
+		policyService := NewMockPolicyService(ctrl)
+		policyService.EXPECT().Check(gomock.Any(), testPolicyID, subjectDID, policy.Handler).
+			Return(policy.ErrNotAllowed)
+
+		subjectResolver := NewMockSubjectResolver(ctrl)
+		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(subjectDID, nil).AnyTimes()
+
+		op := &operation.Operation{
+			ReleaseService:  releaseService,
+			PolicyService:   policyService,
+			ProtectService:  protectService,
+			SubjectResolver: subjectResolver,
+			CollectService:  collectService,
+		}
+
+		rr := handleRequest(t, op, "/v1/release/"+testTicketID+"/collect", http.MethodPost, bytes.NewReader([]byte{}))
+
+		require.Equal(t, http.StatusUnauthorized, rr.Code)
+	})
+
+	t.Run("Unauthorized to collect data", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		releaseService := NewMockReleaseService(ctrl)
+		releaseService.EXPECT().Get(gomock.Any(), testTicketID).
+			Return(&ticket.Ticket{DID: testDID, Status: ticket.New}, nil)
+
+		collectService := NewMockCollectService(ctrl)
+		collectService.EXPECT().Collect(gomock.Any(), protectedData, subjectDID).
+			Times(0)
+
+		protectService := NewMockProtectService(ctrl)
+		protectService.EXPECT().Get(gomock.Any(), testDID).Return(protectedData, nil)
+
+		policyService := NewMockPolicyService(ctrl)
+		policyService.EXPECT().Check(gomock.Any(), testPolicyID, subjectDID, policy.Handler).
+			Return(nil).AnyTimes()
+
+		subjectResolver := NewMockSubjectResolver(ctrl)
+		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(subjectDID, nil).AnyTimes()
+
+		op := &operation.Operation{
+			ReleaseService:  releaseService,
+			PolicyService:   policyService,
+			ProtectService:  protectService,
+			SubjectResolver: subjectResolver,
+			CollectService:  collectService,
+		}
+
+		rr := handleRequest(t, op, "/v1/release/"+testTicketID+"/collect", http.MethodPost, bytes.NewReader([]byte{}))
+
+		require.Equal(t, http.StatusUnauthorized, rr.Code)
+	})
+
+	t.Run("Fail to collect data", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		releaseService := NewMockReleaseService(ctrl)
+		releaseService.EXPECT().Get(gomock.Any(), testTicketID).
+			Return(&ticket.Ticket{DID: testDID, Status: ticket.ReadyToCollect}, nil)
+
+		collectService := NewMockCollectService(ctrl)
+		collectService.EXPECT().Collect(gomock.Any(), protectedData, subjectDID).
+			Return("", errors.New("collect failed"))
+
+		protectService := NewMockProtectService(ctrl)
+		protectService.EXPECT().Get(gomock.Any(), testDID).Return(protectedData, nil)
+
+		policyService := NewMockPolicyService(ctrl)
+		policyService.EXPECT().Check(gomock.Any(), testPolicyID, subjectDID, policy.Handler).
+			Return(nil)
+
+		subjectResolver := NewMockSubjectResolver(ctrl)
+		subjectResolver.EXPECT().Resolve(gomock.Any()).Return(subjectDID, nil).AnyTimes()
+
+		op := &operation.Operation{
+			ReleaseService:  releaseService,
+			PolicyService:   policyService,
+			ProtectService:  protectService,
+			SubjectResolver: subjectResolver,
+			CollectService:  collectService,
+		}
+
+		rr := handleRequest(t, op, "/v1/release/"+testTicketID+"/collect", http.MethodPost, bytes.NewReader([]byte{}))
+
+		require.Equal(t, http.StatusInternalServerError, rr.Code)
+	})
+}
+
+func TestExtractHandler(t *testing.T) {
+	const (
+		testQueryID = "queryID1234"
+	)
+
+	req := operation.ExtractRequest{
+		QueryID: testQueryID,
+	}
+
+	t.Run("Success", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		extractService := NewMockExtractService(ctrl)
+		extractService.EXPECT().Extract(gomock.Any(), testQueryID).Return("target", nil)
+
+		op := &operation.Operation{
+			ExtractService: extractService,
+		}
+
+		body, err := json.Marshal(req)
+		require.NoError(t, err)
+
+		rr := handleRequest(t, op, "/v1/extract", http.MethodPost, bytes.NewReader(body))
+
+		require.Equal(t, http.StatusOK, rr.Code)
+	})
+
+	t.Run("Fail to unmarshal request body", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		extractService := NewMockExtractService(ctrl)
+		extractService.EXPECT().Extract(gomock.Any(), testQueryID).Return("target", nil).Times(0)
+
+		op := &operation.Operation{
+			ExtractService: extractService,
+		}
+
+		rr := handleRequest(t, op, "/v1/extract", http.MethodPost, bytes.NewBufferString("invalid json"))
+
+		require.Equal(t, http.StatusBadRequest, rr.Code)
+	})
+
+	t.Run("Fail to extract", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		extractService := NewMockExtractService(ctrl)
+		extractService.EXPECT().Extract(gomock.Any(), testQueryID).Return("", errors.New("extract failed"))
+
+		op := &operation.Operation{
+			ExtractService: extractService,
+		}
+
+		body, err := json.Marshal(req)
+		require.NoError(t, err)
+
+		rr := handleRequest(t, op, "/v1/extract", http.MethodPost, bytes.NewReader(body))
+
+		require.Equal(t, http.StatusInternalServerError, rr.Code)
+	})
+}
+
 func handleRequest(t *testing.T, op *operation.Operation, path, method string, body io.Reader,
 ) *httptest.ResponseRecorder {
 	t.Helper()

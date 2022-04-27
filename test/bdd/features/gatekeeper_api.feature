@@ -93,3 +93,57 @@ Feature: Gatekeeper API
     When  an HTTP GET with "(request-target),date" headers signed by "Handler" is sent to "https://localhost:9014/v1/release/{ticket_id}/status"
     Then  response status is "200 OK"
      And  response contains "status" with value "READY_TO_COLLECT"
+
+    Scenario: Full scenario
+      Given did owner with name "Intake Processor"
+       And did owner with name "Handler"
+       And did owner with name "Approver 1"
+       And did owner with name "Approver 2"
+       And an HTTP PUT is sent to "https://localhost:9014/v1/policy/full-scenario-policy"
+          """
+          {
+            "collectors": ["{{ .Value "Intake Processor DID" }}"],
+            "handlers": ["{{ .Value "Handler DID" }}"],
+            "approvers": ["{{ .Value "Approver 1 DID" }}", "{{ .Value "Approver 2 DID" }}"],
+            "min_approvers": 2
+          }
+          """
+
+      When an HTTP POST with "(request-target),date,digest" headers signed by "Intake Processor" is sent to "https://localhost:9014/v1/protect" with body
+          """
+          {
+            "target": "@thanos123",
+            "policy": "full-scenario-policy"
+          }
+          """
+      Then response status is "200 OK"
+       And response contains non-empty "did"
+
+      When an HTTP POST with "(request-target),date,digest" headers signed by "Handler" is sent to "https://localhost:9014/v1/release" with body
+          """
+          {
+            "did": "{{ .Value "did" }}"
+          }
+          """
+      Then response status is "200 OK"
+       And response contains non-empty "ticket_id"
+
+      When an HTTP POST with "(request-target),date" headers signed by "Approver 1" is sent to "https://localhost:9014/v1/release/{ticket_id}/authorize"
+      Then response status is "200 OK"
+
+      When an HTTP POST with "(request-target),date" headers signed by "Approver 2" is sent to "https://localhost:9014/v1/release/{ticket_id}/authorize"
+      Then response status is "200 OK"
+
+      When an HTTP POST with "(request-target),date" headers signed by "Handler" is sent to "https://localhost:9014/v1/release/{ticket_id}/collect"
+      Then response status is "200 OK"
+       And response contains non-empty "query_id"
+
+      When an HTTP POST with "(request-target),date,digest" headers signed by "Handler" is sent to "https://localhost:9014/v1/extract" with body
+            """
+            {
+              "query_id": "{{ .Value "query_id" }}"
+            }
+            """
+      Then  response status is "200 OK"
+       And  response contains "target" with value "@thanos123"
+

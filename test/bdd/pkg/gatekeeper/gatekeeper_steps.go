@@ -78,10 +78,12 @@ func (s *Steps) createDIDOwner(ctx context.Context, name string) (context.Contex
 
 	s.didOwners[name] = didOwner
 
-	return common.ContextWithSignerOpts(ctx, name, &common.SignerOpts{
+	ctxWithSigner := common.ContextWithSignerOpts(ctx, name, &common.SignerOpts{
 		PublicKeyID: didOwner.PublicKeyID,
 		PrivateKey:  didOwner.PrivateKey,
-	}), nil
+	})
+
+	return context.WithValue(ctxWithSigner, name+" DID", didOwner.DID), nil //nolint:revive,staticcheck
 }
 
 func (s *Steps) createPolicy(ctx context.Context, policyID string, policy *godog.DocString) error {
@@ -179,7 +181,7 @@ func (s *Steps) createTicket(ctx context.Context, didOwner string) (context.Cont
 
 	s.ticketID = resp.TicketID
 
-	return context.WithValue(ctx, "ticketID", s.ticketID), nil //nolint:revive,staticcheck
+	return context.WithValue(ctx, "ticket_id", s.ticketID), nil //nolint:revive,staticcheck
 }
 
 // GetDID is a helper function used in template to get DID by owner name.

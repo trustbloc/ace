@@ -31,3 +31,18 @@ type ReleaseResponse struct {
 type TicketStatusResponse struct {
 	Status string `json:"status"`
 }
+
+// CollectResponse is a response for collect api.
+type CollectResponse struct {
+	QueryID string `json:"query_id"`
+}
+
+// ExtractRequest is a response for ReleaseRequest.
+type ExtractRequest struct {
+	QueryID string `json:"query_id"`
+}
+
+// ExtractResponse is a response for ExtractRequest.
+type ExtractResponse struct {
+	Target string `json:"target"`
+}

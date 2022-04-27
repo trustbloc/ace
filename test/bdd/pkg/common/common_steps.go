@@ -168,7 +168,7 @@ func (s *Steps) httpDo(ctx context.Context, method, url string, bodyTemplate *go
 	opts = append(opts, httputil.WithHTTPClient(s.HTTPClient), httputil.WithMethod(method))
 
 	if strings.Contains(url, "{ticket_id}") {
-		url = strings.ReplaceAll(url, "{ticket_id}", ctx.Value("ticketID").(string)) //nolint:forcetypeassert
+		url = strings.ReplaceAll(url, "{ticket_id}", ctx.Value("ticket_id").(string)) //nolint:forcetypeassert
 	}
 
 	if bodyTemplate != nil {
@@ -217,14 +217,14 @@ func (s *Steps) checkResponseValue(path, value string) error {
 	return nil
 }
 
-func (s *Steps) checkNonEmptyResponseValue(path string) error {
+func (s *Steps) checkNonEmptyResponseValue(ctx context.Context, path string) (context.Context, error) {
 	res := gjson.Get(string(s.responseBody), path)
 
 	if res.Str == "" {
-		return fmt.Errorf("got empty value")
+		return ctx, fmt.Errorf("got empty value")
 	}
 
-	return nil
+	return context.WithValue(ctx, path, res.Str), nil //nolint:revive,staticcheck
 }
 
 // RequestSigner is a signer in HTTP Signatures auth method.
