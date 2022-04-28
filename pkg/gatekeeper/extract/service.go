@@ -24,7 +24,7 @@ const (
 )
 
 type comparatorClient interface {
-	PostExtract(params *compclientops.PostExtractParams) (*compclientops.PostExtractOK, error)
+	PostExtract(params *compclientops.PostExtractParams, opts ...compclientops.ClientOption) (*compclientops.PostExtractOK, error) //nolint:lll
 }
 
 // Service is a service for extracting protected resources.

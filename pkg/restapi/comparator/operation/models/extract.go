@@ -116,6 +116,8 @@ func (m *Extract) validateQueries(formats strfmt.Registry) error {
 		if err := m.queriesField[i].Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("queries" + "." + strconv.Itoa(i))
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("queries" + "." + strconv.Itoa(i))
 			}
 			return err
 		}
@@ -146,6 +148,8 @@ func (m *Extract) contextValidateQueries(ctx context.Context, formats strfmt.Reg
 		if err := m.queriesField[i].ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("queries" + "." + strconv.Itoa(i))
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("queries" + "." + strconv.Itoa(i))
 			}
 			return err
 		}

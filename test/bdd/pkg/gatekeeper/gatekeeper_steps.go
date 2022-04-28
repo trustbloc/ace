@@ -78,12 +78,10 @@ func (s *Steps) createDIDOwner(ctx context.Context, name string) (context.Contex
 
 	s.didOwners[name] = didOwner
 
-	ctxWithSigner := common.ContextWithSignerOpts(ctx, name, &common.SignerOpts{
+	return common.ContextWithSignerOpts(ctx, name, &common.SignerOpts{
 		PublicKeyID: didOwner.PublicKeyID,
 		PrivateKey:  didOwner.PrivateKey,
-	})
-
-	return context.WithValue(ctxWithSigner, name+" DID", didOwner.DID), nil //nolint:revive,staticcheck
+	}), nil
 }
 
 func (s *Steps) createPolicy(ctx context.Context, policyID string, policy *godog.DocString) error {

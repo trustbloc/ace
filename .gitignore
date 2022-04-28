@@ -5,7 +5,8 @@
 #
 
 .idea/
-build/
+.build/
 coverage*.out
 test/bdd/fixtures/keys
+test/bdd/fixtures/spec
 gomocks_test.go

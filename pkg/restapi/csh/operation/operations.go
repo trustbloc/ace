@@ -31,7 +31,7 @@ import (
 
 	"github.com/trustbloc/ace/pkg/client/vault"
 	did2 "github.com/trustbloc/ace/pkg/did"
-	"github.com/trustbloc/ace/pkg/restapi/csh/operation/openapi"
+	openapi "github.com/trustbloc/ace/pkg/restapi/csh/operation/models"
 	zcapld2 "github.com/trustbloc/ace/pkg/restapi/csh/operation/zcapld"
 	"github.com/trustbloc/ace/pkg/restapi/handler"
 )

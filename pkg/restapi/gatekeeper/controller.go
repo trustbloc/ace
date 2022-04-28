@@ -13,7 +13,7 @@ import (
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdr"
 	"github.com/hyperledger/aries-framework-go/spi/storage"
 
-	"github.com/trustbloc/ace/pkg/client/comparator/client/operations"
+	comparator "github.com/trustbloc/ace/pkg/client/comparator/client/operations"
 	"github.com/trustbloc/ace/pkg/client/vault"
 	"github.com/trustbloc/ace/pkg/gatekeeper/collect"
 	"github.com/trustbloc/ace/pkg/gatekeeper/extract"
@@ -30,7 +30,7 @@ import (
 type Config struct {
 	StorageProvider  storage.Provider
 	VaultClient      vault.Vault
-	ComparatorClient operations.ClientService
+	ComparatorClient comparator.ClientService
 	VDR              vdr.Registry
 	VCIssuer         *vcissuer.Service
 }

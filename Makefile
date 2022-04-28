@@ -2,7 +2,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-GOBIN_PATH		=$(abspath .)/build/bin
+GOBIN_PATH		=$(abspath .)/.build/bin
 LINT_VERSION 	?=v1.44.2
 MOCK_VERSION 	?=v1.6.0
 
@@ -19,10 +19,10 @@ GATE_KEEPER_PATH=cmd/gatekeeper
 COMPARATOR_REST_PATH=cmd/comparator-rest
 CONFIDENTIAL_STORAGE_HUB_PATH=cmd/confidential-storage-hub
 
-# OpenAPI spec
-OPENAPI_DOCKER_IMG=quay.io/goswagger/swagger
-OPENAPI_SPEC_PATH=.build/rest/openapi/spec
-OPENAPI_DOCKER_IMG_VERSION=v0.26.0
+SWAGGER_DOCKER_IMG =quay.io/goswagger/swagger
+SWAGGER_VERSION    =v0.29.0
+SWAGGER_DIR        ="./test/bdd/fixtures/spec"
+SWAGGER_OUTPUT     =$(SWAGGER_DIR)"/openAPI.yml"
 
 OS := $(shell uname)
 ifeq  ($(OS),$(filter $(OS),Darwin Linux))
@@ -69,6 +69,20 @@ generate-test-keys:
 		--entrypoint "/opt/workspace/ace/scripts/generate_test_keys.sh" \
 		frapsoft/openssl
 
+.PHONY: generate-comparator-client
+generate-comparator-client:
+	@echo "Generating comparator client"
+	@MODELS_PATH=pkg/restapi/comparator/operation CLIENT_PATH=pkg/client/comparator SPEC_LOC=${COMPARATOR_REST_PATH}/docs/openapi.yaml  \
+	DOCKER_IMAGE=$(SWAGGER_DOCKER_IMG) DOCKER_IMAGE_VERSION=$(SWAGGER_VERSION)  \
+	scripts/generate_client.sh
+
+.PHONY: generate-csh-client
+generate-csh-client:
+	@echo "Generating confidential-storage-hub client"
+	@MODELS_PATH=pkg/restapi/csh/operation CLIENT_PATH=pkg/client/csh SPEC_LOC=${CONFIDENTIAL_STORAGE_HUB_PATH}/docs/openapi.yaml  \
+	DOCKER_IMAGE=$(SWAGGER_DOCKER_IMG) DOCKER_IMAGE_VERSION=$(SWAGGER_VERSION)  \
+	scripts/generate_client.sh
+
 .PHONY: gatekeeper-docker
 gatekeeper-docker:
 	@echo "Building Gatekeeper docker image"
@@ -103,21 +117,22 @@ bdd-init-docker:
 	@docker build -f ./test/bdd/fixtures/init/Dockerfile -t bdd-init:latest \
 	--build-arg ALPINE_VER=$(ALPINE_VER) .
 
+.PHONY: open-api-spec
+open-api-spec:
+	@GOBIN=$(GOBIN_PATH) go install github.com/go-swagger/go-swagger/cmd/swagger@$(SWAGGER_VERSION)
+	@echo "Generating Open API spec"
+	@mkdir $(SWAGGER_DIR)
+	@$(GOBIN_PATH)/swagger generate spec -w ./cmd/gatekeeper -x github.com/trustbloc/orb -x github.com/trustbloc/ace/pkg/client/comparator -o $(SWAGGER_OUTPUT)
+	@echo "Validating generated spec"
+	@$(GOBIN_PATH)/swagger validate $(SWAGGER_OUTPUT)
+
+.PHONY: open-api-demo
+open-api-demo: clean open-api-spec generate-test-keys gatekeeper-docker comparator-rest-docker vault-server-docker confidential-storage-hub-docker bdd-init-docker
+	@echo "Running Open API demo on http://localhost:8089/openapi"
+	@docker-compose -f test/bdd/fixtures/docker-compose.yml up --force-recreate -d gatekeeper-openapi.trustbloc.local
+
 .PHONY: clean
 clean:
 	@rm -rf ./build
 	@rm -rf coverage*.out
-
-.PHONY: generate-models-client-gatekeeper
-generate-models-client-gatekeeper:
-	@echo "Generating gatekeeper models and client"
-	@MODELS_PATH=pkg/restapi/gatekeeper/operation CLIENT_PATH=pkg/client/gatekeeper SPEC_LOC=${GATE_KEEPER_PATH}/openapi.yaml  \
-	DOCKER_IMAGE=$(OPENAPI_DOCKER_IMG) DOCKER_IMAGE_VERSION=$(OPENAPI_DOCKER_IMG_VERSION)  \
-	scripts/generate-models-client.sh
-
-.PHONY: generate-models-client-comparator
-generate-models-client-comparator:
-	@echo "Generating comparator models and client"
-	@MODELS_PATH=pkg/restapi/comparator/operation CLIENT_PATH=pkg/client/comparator SPEC_LOC=${COMPARATOR_REST_PATH}/docs/openapi.yaml  \
-	DOCKER_IMAGE=$(OPENAPI_DOCKER_IMG) DOCKER_IMAGE_VERSION=$(OPENAPI_DOCKER_IMG_VERSION)  \
-	scripts/generate-models-client.sh
+	@rm -rf $(SWAGGER_DIR)

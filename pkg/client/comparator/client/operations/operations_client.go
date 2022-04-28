@@ -30,15 +30,18 @@ type Client struct {
 	formats   strfmt.Registry
 }
 
+// ClientOption is the option for Client methods
+type ClientOption func(*runtime.ClientOperation)
+
 // ClientService is the interface for Client methods
 type ClientService interface {
-	GetConfig(params *GetConfigParams) (*GetConfigOK, error)
+	GetConfig(params *GetConfigParams, opts ...ClientOption) (*GetConfigOK, error)
 
-	PostAuthorizations(params *PostAuthorizationsParams) (*PostAuthorizationsOK, error)
+	PostAuthorizations(params *PostAuthorizationsParams, opts ...ClientOption) (*PostAuthorizationsOK, error)
 
-	PostCompare(params *PostCompareParams) (*PostCompareOK, error)
+	PostCompare(params *PostCompareParams, opts ...ClientOption) (*PostCompareOK, error)
 
-	PostExtract(params *PostExtractParams) (*PostExtractOK, error)
+	PostExtract(params *PostExtractParams, opts ...ClientOption) (*PostExtractOK, error)
 
 	SetTransport(transport runtime.ClientTransport)
 }
@@ -50,13 +53,12 @@ This configuration may be used for instance to configure a profile in the VC HTT
 Verifiable Credentials using the same DID and keys.
 
 */
-func (a *Client) GetConfig(params *GetConfigParams) (*GetConfigOK, error) {
+func (a *Client) GetConfig(params *GetConfigParams, opts ...ClientOption) (*GetConfigOK, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewGetConfigParams()
 	}
-
-	result, err := a.transport.Submit(&runtime.ClientOperation{
+	op := &runtime.ClientOperation{
 		ID:                 "GetConfig",
 		Method:             "GET",
 		PathPattern:        "/config",
@@ -67,7 +69,12 @@ func (a *Client) GetConfig(params *GetConfigParams) (*GetConfigOK, error) {
 		Reader:             &GetConfigReader{formats: a.formats},
 		Context:            params.Context,
 		Client:             params.HTTPClient,
-	})
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
@@ -88,13 +95,12 @@ Authorization to read the document is obtained at the Vault Server and pre-confi
 Confidential Storage Hub, to be referenced during the actual comparison operation.
 
 */
-func (a *Client) PostAuthorizations(params *PostAuthorizationsParams) (*PostAuthorizationsOK, error) {
+func (a *Client) PostAuthorizations(params *PostAuthorizationsParams, opts ...ClientOption) (*PostAuthorizationsOK, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewPostAuthorizationsParams()
 	}
-
-	result, err := a.transport.Submit(&runtime.ClientOperation{
+	op := &runtime.ClientOperation{
 		ID:                 "PostAuthorizations",
 		Method:             "POST",
 		PathPattern:        "/authorizations",
@@ -105,7 +111,12 @@ func (a *Client) PostAuthorizations(params *PostAuthorizationsParams) (*PostAuth
 		Reader:             &PostAuthorizationsReader{formats: a.formats},
 		Context:            params.Context,
 		Client:             params.HTTPClient,
-	})
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
@@ -128,13 +139,12 @@ The comparison's operator's type determines the type of comparison to be perform
 The result is always a boolean value.
 
 */
-func (a *Client) PostCompare(params *PostCompareParams) (*PostCompareOK, error) {
+func (a *Client) PostCompare(params *PostCompareParams, opts ...ClientOption) (*PostCompareOK, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewPostCompareParams()
 	}
-
-	result, err := a.transport.Submit(&runtime.ClientOperation{
+	op := &runtime.ClientOperation{
 		ID:                 "PostCompare",
 		Method:             "POST",
 		PathPattern:        "/compare",
@@ -145,7 +155,12 @@ func (a *Client) PostCompare(params *PostCompareParams) (*PostCompareOK, error) 
 		Reader:             &PostCompareReader{formats: a.formats},
 		Context:            params.Context,
 		Client:             params.HTTPClient,
-	})
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
@@ -165,13 +180,12 @@ from authorizations granted at other Comparators. Each element in the response i
 via the ID.
 
 */
-func (a *Client) PostExtract(params *PostExtractParams) (*PostExtractOK, error) {
+func (a *Client) PostExtract(params *PostExtractParams, opts ...ClientOption) (*PostExtractOK, error) {
 	// TODO: Validate the params before sending
 	if params == nil {
 		params = NewPostExtractParams()
 	}
-
-	result, err := a.transport.Submit(&runtime.ClientOperation{
+	op := &runtime.ClientOperation{
 		ID:                 "PostExtract",
 		Method:             "POST",
 		PathPattern:        "/extract",
@@ -182,7 +196,12 @@ func (a *Client) PostExtract(params *PostExtractParams) (*PostExtractOK, error) 
 		Reader:             &PostExtractReader{formats: a.formats},
 		Context:            params.Context,
 		Client:             params.HTTPClient,
-	})
+	}
+	for _, opt := range opts {
+		opt(op)
+	}
+
+	result, err := a.transport.Submit(op)
 	if err != nil {
 		return nil, err
 	}
