@@ -19,6 +19,7 @@ services:
       - DATABASE_PREFIX=gatekeeper_
       - GK_VAULT_SERVER_URL=https://vault.trustbloc.local:${VAULT_SERVER_PORT}
       - GK_VC_ISSUER_URL=http://vc-issuer.trustbloc.local:${ISSUER_VC_PORT}/vc-issuer-gk
+      - GK_COMPARATOR_URL=https://comparator.trustbloc.local:${COMPARATOR_REST_PORT}
       - GK_BLOC_DOMAIN=testnet.orb.local
       - GK_VC_REQUEST_TOKENS=vcs_issuer=vcs_issuer_rw_token
       - GK_REST_API_TOKEN=gk_token

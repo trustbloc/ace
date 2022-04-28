@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package operation
 
 //nolint:lll
-//go:generate mockgen -destination gomocks_test.go -package operation_test -source=operations.go -mock_names policyService=MockPolicyService,protectService=MockProtectService,releaseService=MockReleaseService,subjectResolver=MockSubjectResolver
+//go:generate mockgen -destination gomocks_test.go -package operation_test -source=operations.go -mock_names policyService=MockPolicyService,protectService=MockProtectService,releaseService=MockReleaseService,subjectResolver=MockSubjectResolver,collectService=MockCollectService,extractService=MockExtractService
 
 import (
 	"context"
@@ -37,6 +37,8 @@ const (
 	releaseEndpoint      = baseV1Path + "/release"
 	authorizeEndpoint    = releaseEndpoint + "/{" + ticketIDVarName + "}/authorize"
 	ticketStatusEndpoint = releaseEndpoint + "/{" + ticketIDVarName + "}/status"
+	collectEndpoint      = releaseEndpoint + "/{" + ticketIDVarName + "}/collect"
+	extractEndpoint      = baseV1Path + "/extract"
 )
 
 var logger = log.New("gatekeeper")
@@ -57,6 +59,14 @@ type releaseService interface {
 	Authorize(ctx context.Context, ticketID, approverDID string) error
 }
 
+type collectService interface {
+	Collect(ctx context.Context, protectedData *protect.ProtectedData, requestingPartyDID string) (string, error)
+}
+
+type extractService interface {
+	Extract(ctx context.Context, authToken string) (string, error)
+}
+
 type subjectResolver interface {
 	Resolve(ctx context.Context) (string, error)
 }
@@ -66,7 +76,9 @@ type Operation struct {
 	PolicyService   policyService
 	ProtectService  protectService
 	ReleaseService  releaseService
+	CollectService  collectService
 	SubjectResolver subjectResolver
+	ExtractService  extractService
 }
 
 // GetRESTHandlers get all controller API handler available for this service.
@@ -77,6 +89,8 @@ func (o *Operation) GetRESTHandlers() []handler.Handler {
 		handler.NewHTTPHandler(releaseEndpoint, http.MethodPost, o.releaseHandler, handler.WithAuth(handler.AuthHTTPSig)),
 		handler.NewHTTPHandler(authorizeEndpoint, http.MethodPost, o.authorizeHandler, handler.WithAuth(handler.AuthHTTPSig)),
 		handler.NewHTTPHandler(ticketStatusEndpoint, http.MethodGet, o.ticketStatusHandler, handler.WithAuth(handler.AuthHTTPSig)), //nolint:lll
+		handler.NewHTTPHandler(collectEndpoint, http.MethodPost, o.collectHandler, handler.WithAuth(handler.AuthHTTPSig)),
+		handler.NewHTTPHandler(extractEndpoint, http.MethodPost, o.extractHandler),
 	}
 }
 
@@ -227,6 +241,66 @@ func (o *Operation) ticketStatusHandler(rw http.ResponseWriter, r *http.Request)
 	}
 
 	respond(rw, http.StatusOK, &TicketStatusResponse{Status: t.Status.String()})
+}
+
+func (o *Operation) collectHandler(rw http.ResponseWriter, r *http.Request) {
+	ticketID := strings.ToLower(mux.Vars(r)[ticketIDVarName])
+
+	t, err := o.ReleaseService.Get(r.Context(), ticketID)
+	if err != nil {
+		respondError(rw, http.StatusBadRequest, err)
+
+		return
+	}
+
+	protectedData, err := o.ProtectService.Get(r.Context(), t.DID)
+	if err != nil {
+		respondError(rw, http.StatusInternalServerError, err)
+
+		return
+	}
+
+	if t.Status != ticket.ReadyToCollect {
+		respondError(rw, http.StatusUnauthorized, errors.New("not authorized to access ticket"))
+
+		return
+	}
+
+	subDID, err := o.checkPolicy(r.Context(), protectedData.PolicyID, policy.Handler)
+	if err != nil {
+		respondError(rw, err.(*policyError).status, err) //nolint:errorlint,forcetypeassert
+
+		return
+	}
+
+	queryID, err := o.CollectService.Collect(r.Context(), protectedData, subDID)
+	if err != nil {
+		respondError(rw, http.StatusInternalServerError, errors.New("fail to collect data"))
+
+		return
+	}
+
+	respond(rw, http.StatusOK, &CollectResponse{QueryID: queryID})
+}
+
+func (o *Operation) extractHandler(rw http.ResponseWriter, r *http.Request) {
+	var req ExtractRequest
+
+	err := json.NewDecoder(r.Body).Decode(&req)
+	if err != nil {
+		respondError(rw, http.StatusBadRequest, err)
+
+		return
+	}
+
+	target, err := o.ExtractService.Extract(r.Context(), req.QueryID)
+	if err != nil {
+		respondError(rw, http.StatusInternalServerError, errors.New("fail to resolve subject"))
+
+		return
+	}
+
+	respond(rw, http.StatusOK, &ExtractResponse{Target: target})
 }
 
 type policyError struct {

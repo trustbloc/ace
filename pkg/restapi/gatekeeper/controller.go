@@ -13,7 +13,10 @@ import (
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdr"
 	"github.com/hyperledger/aries-framework-go/spi/storage"
 
+	"github.com/trustbloc/ace/pkg/client/comparator/client/operations"
 	"github.com/trustbloc/ace/pkg/client/vault"
+	"github.com/trustbloc/ace/pkg/gatekeeper/collect"
+	"github.com/trustbloc/ace/pkg/gatekeeper/extract"
 	"github.com/trustbloc/ace/pkg/gatekeeper/policy"
 	"github.com/trustbloc/ace/pkg/gatekeeper/protect"
 	"github.com/trustbloc/ace/pkg/gatekeeper/release"
@@ -25,10 +28,11 @@ import (
 
 // Config defines configuration for Gatekeeper operations.
 type Config struct {
-	StorageProvider storage.Provider
-	VaultClient     vault.Vault
-	VDR             vdr.Registry
-	VCIssuer        *vcissuer.Service
+	StorageProvider  storage.Provider
+	VaultClient      vault.Vault
+	ComparatorClient operations.ClientService
+	VDR              vdr.Registry
+	VCIssuer         *vcissuer.Service
 }
 
 // New returns a new Controller instance.
@@ -57,10 +61,15 @@ func New(config *Config) (*Controller, error) {
 		return nil, fmt.Errorf("create release service: %w", err)
 	}
 
+	collectService := collect.NewService(config.ComparatorClient, config.VaultClient)
+	extractService := extract.NewService(config.ComparatorClient)
+
 	op := &operation.Operation{
 		PolicyService:   policyService,
 		ProtectService:  protectService,
 		ReleaseService:  releaseService,
+		CollectService:  collectService,
+		ExtractService:  extractService,
 		SubjectResolver: &subjectDIDResolver{},
 	}
 

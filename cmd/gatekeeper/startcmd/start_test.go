@@ -99,6 +99,7 @@ func TestNotSupportedDSN(t *testing.T) {
 		"--" + didResolverURLFlagName, "https://did-resolver-url",
 		"--" + vaultServerURLFlagName, "https://vault-server-url",
 		"--" + vcIssuerURLFlagName, "https://vc-isssuer-url",
+		"--" + comparatorURLFlagName, "https://comparator-url",
 	}
 	startCmd.SetArgs(args)
 
@@ -130,6 +131,7 @@ func TestStartCmdValidArgs(t *testing.T) {
 		"--" + didResolverURLFlagName, "https://did-resolver-url",
 		"--" + vaultServerURLFlagName, "https://vault-server-url",
 		"--" + vcIssuerURLFlagName, "https://vc-isssuer-url",
+		"--" + comparatorURLFlagName, "https://comparator-url",
 	}
 	startCmd.SetArgs(args)
 
