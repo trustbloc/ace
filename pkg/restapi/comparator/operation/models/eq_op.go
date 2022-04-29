@@ -152,6 +152,8 @@ func (m *EqOp) validateArgs(formats strfmt.Registry) error {
 		if err := m.argsField[i].Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("args" + "." + strconv.Itoa(i))
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("args" + "." + strconv.Itoa(i))
 			}
 			return err
 		}
@@ -182,6 +184,8 @@ func (m *EqOp) contextValidateArgs(ctx context.Context, formats strfmt.Registry)
 		if err := m.argsField[i].ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("args" + "." + strconv.Itoa(i))
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("args" + "." + strconv.Itoa(i))
 			}
 			return err
 		}

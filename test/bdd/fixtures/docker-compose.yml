@@ -36,6 +36,21 @@ services:
     networks:
       - bdd_net
 
+  gatekeeper-openapi.trustbloc.local:
+    container_name: gatekeeper-openapi.trustbloc.local
+    image: swaggerapi/swagger-ui
+    environment:
+      - SWAGGER_JSON=/spec/openAPI.yml
+      - BASE_URL=/openapi
+    ports:
+      - "8089:8080"
+    volumes:
+      - ./spec:/spec
+    depends_on:
+      - gatekeeper.trustbloc.local
+    networks:
+      - bdd_net
+
   vault.trustbloc.local:
     container_name: vault.trustbloc.local
     image: ${VAULT_SERVER_IMAGE}:${VAULT_SERVER_IMAGE_TAG}
@@ -159,6 +174,8 @@ services:
       - ${ISSUER_VC_PORT}:${ISSUER_VC_PORT}
     entrypoint: ""
     command: /bin/sh -c "sleep 5;vc-rest start"
+    depends_on:
+      - file-server.trustbloc.local
     volumes:
       - ./keys/tls:/etc/tls
     networks:

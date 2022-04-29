@@ -21,7 +21,7 @@ import (
 	"github.com/hyperledger/aries-framework-go/spi/storage"
 	"github.com/trustbloc/edv/pkg/restapi/models"
 
-	"github.com/trustbloc/ace/pkg/restapi/csh/operation/openapi"
+	openapi "github.com/trustbloc/ace/pkg/restapi/csh/operation/models"
 )
 
 // HandleEqOp handles a ComparisonRequest using the EqOp operator.

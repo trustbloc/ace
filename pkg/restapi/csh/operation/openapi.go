@@ -7,7 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package operation
 
 import (
-	"github.com/trustbloc/ace/pkg/restapi/csh/operation/openapi"
+	openapi "github.com/trustbloc/ace/pkg/restapi/csh/operation/models"
 )
 
 // Error.

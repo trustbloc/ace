@@ -232,6 +232,8 @@ func (m *Scope) validateAuthTokens(formats strfmt.Registry) error {
 		if err := m.AuthTokens.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("authTokens")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("authTokens")
 			}
 			return err
 		}
@@ -250,6 +252,8 @@ func (m *Scope) validateCaveats(formats strfmt.Registry) error {
 		if err := m.caveatsField[i].Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("caveats" + "." + strconv.Itoa(i))
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("caveats" + "." + strconv.Itoa(i))
 			}
 			return err
 		}
@@ -292,6 +296,8 @@ func (m *Scope) contextValidateAuthTokens(ctx context.Context, formats strfmt.Re
 		if err := m.AuthTokens.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("authTokens")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("authTokens")
 			}
 			return err
 		}
@@ -307,6 +313,8 @@ func (m *Scope) contextValidateCaveats(ctx context.Context, formats strfmt.Regis
 		if err := m.caveatsField[i].ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("caveats" + "." + strconv.Itoa(i))
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("caveats" + "." + strconv.Itoa(i))
 			}
 			return err
 		}

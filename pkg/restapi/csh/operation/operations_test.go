@@ -41,7 +41,7 @@ import (
 	"github.com/trustbloc/ace/pkg/internal/mock/storage"
 	"github.com/trustbloc/ace/pkg/internal/testutil"
 	"github.com/trustbloc/ace/pkg/restapi/csh/operation"
-	"github.com/trustbloc/ace/pkg/restapi/csh/operation/openapi"
+	openapi "github.com/trustbloc/ace/pkg/restapi/csh/operation/models"
 )
 
 func TestNew(t *testing.T) {

@@ -17,30 +17,27 @@ import (
 	"github.com/go-openapi/swag"
 )
 
-// ProtectReq protect req
+// Comparison TODO - "comparison" does not sound apt as a name
 //
-// swagger:model ProtectReq
-type ProtectReq struct {
+// swagger:model Comparison
+type Comparison struct {
 
-	// policy
-	Policy string `json:"policy,omitempty"`
-
-	// target
-	Target string `json:"target,omitempty"`
+	// result
+	Result bool `json:"result,omitempty"`
 }
 
-// Validate validates this protect req
-func (m *ProtectReq) Validate(formats strfmt.Registry) error {
+// Validate validates this comparison
+func (m *Comparison) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-// ContextValidate validates this protect req based on context it is used
-func (m *ProtectReq) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validates this comparison based on context it is used
+func (m *Comparison) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }
 
 // MarshalBinary interface implementation
-func (m *ProtectReq) MarshalBinary() ([]byte, error) {
+func (m *Comparison) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -48,8 +45,8 @@ func (m *ProtectReq) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *ProtectReq) UnmarshalBinary(b []byte) error {
-	var res ProtectReq
+func (m *Comparison) UnmarshalBinary(b []byte) error {
+	var res Comparison
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

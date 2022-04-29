@@ -17,27 +17,27 @@ import (
 	"github.com/go-openapi/swag"
 )
 
-// ProtectResp protect resp
+// Error error
 //
-// swagger:model ProtectResp
-type ProtectResp struct {
+// swagger:model Error
+type Error struct {
 
-	// did
-	Did string `json:"did,omitempty"`
+	// err message
+	ErrMessage string `json:"errMessage,omitempty"`
 }
 
-// Validate validates this protect resp
-func (m *ProtectResp) Validate(formats strfmt.Registry) error {
+// Validate validates this error
+func (m *Error) Validate(formats strfmt.Registry) error {
 	return nil
 }
 
-// ContextValidate validates this protect resp based on context it is used
-func (m *ProtectResp) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
+// ContextValidate validates this error based on context it is used
+func (m *Error) ContextValidate(ctx context.Context, formats strfmt.Registry) error {
 	return nil
 }
 
 // MarshalBinary interface implementation
-func (m *ProtectResp) MarshalBinary() ([]byte, error) {
+func (m *Error) MarshalBinary() ([]byte, error) {
 	if m == nil {
 		return nil, nil
 	}
@@ -45,8 +45,8 @@ func (m *ProtectResp) MarshalBinary() ([]byte, error) {
 }
 
 // UnmarshalBinary interface implementation
-func (m *ProtectResp) UnmarshalBinary(b []byte) error {
-	var res ProtectResp
+func (m *Error) UnmarshalBinary(b []byte) error {
+	var res Error
 	if err := swag.ReadJSON(b, &res); err != nil {
 		return err
 	}

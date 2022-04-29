@@ -59,6 +59,8 @@ func (m *ExtractResp) validateDocuments(formats strfmt.Registry) error {
 			if err := m.Documents[i].Validate(formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("documents" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("documents" + "." + strconv.Itoa(i))
 				}
 				return err
 			}
@@ -91,6 +93,8 @@ func (m *ExtractResp) contextValidateDocuments(ctx context.Context, formats strf
 			if err := m.Documents[i].ContextValidate(ctx, formats); err != nil {
 				if ve, ok := err.(*errors.Validation); ok {
 					return ve.ValidateName("documents" + "." + strconv.Itoa(i))
+				} else if ce, ok := err.(*errors.CompositeError); ok {
+					return ce.ValidateName("documents" + "." + strconv.Itoa(i))
 				}
 				return err
 			}

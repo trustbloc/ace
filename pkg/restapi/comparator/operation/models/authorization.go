@@ -85,6 +85,8 @@ func (m *Authorization) validateScope(formats strfmt.Registry) error {
 		if err := m.Scope.Validate(formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("scope")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("scope")
 			}
 			return err
 		}
@@ -113,6 +115,8 @@ func (m *Authorization) contextValidateScope(ctx context.Context, formats strfmt
 		if err := m.Scope.ContextValidate(ctx, formats); err != nil {
 			if ve, ok := err.(*errors.Validation); ok {
 				return ve.ValidateName("scope")
+			} else if ce, ok := err.(*errors.CompositeError); ok {
+				return ce.ValidateName("scope")
 			}
 			return err
 		}

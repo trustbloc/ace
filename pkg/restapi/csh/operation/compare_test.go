@@ -26,7 +26,7 @@ import (
 	"github.com/trustbloc/ace/pkg/client/vault"
 	"github.com/trustbloc/ace/pkg/internal/mock/storage"
 	"github.com/trustbloc/ace/pkg/restapi/csh/operation"
-	"github.com/trustbloc/ace/pkg/restapi/csh/operation/openapi"
+	openapi "github.com/trustbloc/ace/pkg/restapi/csh/operation/models"
 )
 
 func TestOperation_HandleEqOp(t *testing.T) {

@@ -28,8 +28,8 @@ const (
 )
 
 type comparatorClient interface {
-	GetConfig(params *compclientops.GetConfigParams) (*compclientops.GetConfigOK, error)
-	PostAuthorizations(params *compclientops.PostAuthorizationsParams) (*compclientops.PostAuthorizationsOK, error)
+	GetConfig(params *compclientops.GetConfigParams, opts ...compclientops.ClientOption) (*compclientops.GetConfigOK, error)                            //nolint:lll
+	PostAuthorizations(params *compclientops.PostAuthorizationsParams, opts ...compclientops.ClientOption) (*compclientops.PostAuthorizationsOK, error) //nolint:lll
 }
 
 type vaultClient interface {

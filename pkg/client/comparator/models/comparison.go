@@ -119,6 +119,8 @@ func (m *Comparison) validateOp(formats strfmt.Registry) error {
 	if err := m.Op().Validate(formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("op")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("op")
 		}
 		return err
 	}
@@ -145,6 +147,8 @@ func (m *Comparison) contextValidateOp(ctx context.Context, formats strfmt.Regis
 	if err := m.Op().ContextValidate(ctx, formats); err != nil {
 		if ve, ok := err.(*errors.Validation); ok {
 			return ve.ValidateName("op")
+		} else if ce, ok := err.(*errors.CompositeError); ok {
+			return ce.ValidateName("op")
 		}
 		return err
 	}

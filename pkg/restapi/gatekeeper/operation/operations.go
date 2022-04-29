@@ -73,11 +73,11 @@ type subjectResolver interface {
 
 // Operation defines handlers for Gatekeeper operations.
 type Operation struct {
+	SubjectResolver subjectResolver
 	PolicyService   policyService
 	ProtectService  protectService
 	ReleaseService  releaseService
 	CollectService  collectService
-	SubjectResolver subjectResolver
 	ExtractService  extractService
 }
 
@@ -94,6 +94,13 @@ func (o *Operation) GetRESTHandlers() []handler.Handler {
 	}
 }
 
+// createPolicyHandler swagger:route PUT /v1/policy/{policy_id} gatekeeper createPolicyReq
+//
+// Creates policy configuration for storing and releasing protected data.
+//
+// Responses:
+//     200: createPolicyResp
+//     default: errorResp
 func (o *Operation) createPolicyHandler(rw http.ResponseWriter, r *http.Request) {
 	var p policy.Policy
 
@@ -116,6 +123,13 @@ func (o *Operation) createPolicyHandler(rw http.ResponseWriter, r *http.Request)
 	respond(rw, http.StatusOK, nil)
 }
 
+// protectHandler swagger:route POST /v1/protect gatekeeper protectReq
+//
+// Converts a social media handle (or other sensitive string data) into a DID.
+//
+// Responses:
+//     200: protectResp
+//     default: errorResp
 func (o *Operation) protectHandler(rw http.ResponseWriter, r *http.Request) {
 	var req ProtectRequest
 
@@ -142,6 +156,13 @@ func (o *Operation) protectHandler(rw http.ResponseWriter, r *http.Request) {
 	respond(rw, http.StatusOK, &ProtectResponse{DID: protectedData.DID})
 }
 
+// releaseHandler swagger:route POST /v1/release gatekeeper releaseReq
+//
+// Creates a new release transaction (ticket) on a DID.
+//
+// Responses:
+//     200: releaseResp
+//     default: errorResp
 func (o *Operation) releaseHandler(rw http.ResponseWriter, r *http.Request) {
 	var req ReleaseRequest
 
@@ -175,6 +196,13 @@ func (o *Operation) releaseHandler(rw http.ResponseWriter, r *http.Request) {
 	respond(rw, http.StatusOK, &ReleaseResponse{TicketID: t.ID})
 }
 
+// authorizeHandler swagger:route POST /v1/release/{ticket_id}/authorize gatekeeper authorizeReq
+//
+// Authorizes release transaction (ticket).
+//
+// Responses:
+//     200: authorizeResp
+//     default: errorResp
 func (o *Operation) authorizeHandler(rw http.ResponseWriter, r *http.Request) {
 	ticketID := mux.Vars(r)[ticketIDVarName]
 
@@ -213,6 +241,13 @@ func (o *Operation) authorizeHandler(rw http.ResponseWriter, r *http.Request) {
 	respond(rw, http.StatusOK, nil)
 }
 
+// ticketStatusHandler swagger:route GET /v1/release/{ticket_id}/status gatekeeper ticketStatusReq
+//
+// Gets the status of the ticket.
+//
+// Responses:
+//     200: ticketStatusResp
+//     default: errorResp
 func (o *Operation) ticketStatusHandler(rw http.ResponseWriter, r *http.Request) {
 	ticketID := mux.Vars(r)[ticketIDVarName]
 
@@ -243,6 +278,13 @@ func (o *Operation) ticketStatusHandler(rw http.ResponseWriter, r *http.Request)
 	respond(rw, http.StatusOK, &TicketStatusResponse{Status: t.Status.String()})
 }
 
+// collectHandler swagger:route POST /v1/release/{ticket_id}/collect gatekeeper collectReq
+//
+// Generates extract query for the ticket that has completed authorization process.
+//
+// Responses:
+//     200: collectResp
+//     default: errorResp
 func (o *Operation) collectHandler(rw http.ResponseWriter, r *http.Request) {
 	ticketID := strings.ToLower(mux.Vars(r)[ticketIDVarName])
 
@@ -283,6 +325,13 @@ func (o *Operation) collectHandler(rw http.ResponseWriter, r *http.Request) {
 	respond(rw, http.StatusOK, &CollectResponse{QueryID: queryID})
 }
 
+// extractHandler swagger:route POST /v1/extract gatekeeper extractReq
+//
+// Extracts protected data.
+//
+// Responses:
+//     200: extractResp
+//     default: errorResp
 func (o *Operation) extractHandler(rw http.ResponseWriter, r *http.Request) {
 	var req ExtractRequest
 
