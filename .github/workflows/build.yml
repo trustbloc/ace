@@ -103,6 +103,9 @@ jobs:
           make vault-server-docker
           docker tag ghcr.io/trustbloc/vault-server:latest ${VAULT_SERVER_PKG}:${VAULT_SERVER_TAG}
           docker push ${VAULT_SERVER_PKG}:${VAULT_SERVER_TAG}
+          make gatekeeper-docker
+          docker tag ghcr.io/trustbloc/gatekeeper:latest ${GATEKEEPER_PKG}:${GATEKEEPER_TAG}
+          docker push ${GATEKEEPER_PKG}:${GATEKEEPER_TAG}
         env:
           DOCKER_USER: ${{ secrets.CR_USER }}
           DOCKER_PASSWORD: ${{ secrets.CR_PAT }}
