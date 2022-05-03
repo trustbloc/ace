@@ -61,7 +61,7 @@ func NewSteps(tlsConfig *tls.Config) (*Steps, error) {
 // RegisterSteps registers common scenario steps.
 func (s *Steps) RegisterSteps(sc *godog.ScenarioContext) {
 	sc.Step(`^an HTTP GET is sent to "([^"]*)"$`, s.httpGet)
-	sc.Step(`^an HTTP PUT is sent to "([^"]*)"$`, s.httpPut)
+	sc.Step(`^an HTTP PUT with bearer token "([^"]*)" is sent to "([^"]*)"$`, s.httpPutWithToken)
 	sc.Step(`^an HTTP POST is sent to "([^"]*)"$`, s.httpPost)
 	sc.Step(`^an HTTP GET with "([^"]*)" headers signed by "([^"]*)" is sent to "([^"]*)"$`, s.httpGetSigned)
 	sc.Step(`^an HTTP POST with "([^"]*)" headers signed by "([^"]*)" is sent to "([^"]*)"$`, s.httpPostSigned)
@@ -114,12 +114,12 @@ func (s *Steps) httpGet(ctx context.Context, url string) error {
 	return s.httpDo(ctx, http.MethodGet, url, nil)
 }
 
-func (s *Steps) httpPut(ctx context.Context, url string, docStr *godog.DocString) error {
-	return s.httpDo(ctx, http.MethodPut, url, docStr, httputil.WithAuthToken("gk_token"))
+func (s *Steps) httpPutWithToken(ctx context.Context, token, url string, docStr *godog.DocString) error {
+	return s.httpDo(ctx, http.MethodPut, url, docStr, httputil.WithAuthToken(token))
 }
 
 func (s *Steps) httpPost(ctx context.Context, url string, docStr *godog.DocString) error {
-	return s.httpDo(ctx, http.MethodPost, url, docStr, httputil.WithAuthToken("gk_token"))
+	return s.httpDo(ctx, http.MethodPost, url, docStr)
 }
 
 func (s *Steps) httpGetSigned(ctx context.Context, headers, signer, url string) error {
