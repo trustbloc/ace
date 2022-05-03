@@ -14,7 +14,7 @@ Feature: Gatekeeper API
      And  response contains "status" with value "success"
 
   Scenario: Create policy configuration for storing/releasing protected data
-    When  an HTTP PUT is sent to "https://localhost:9014/v1/policy/containment-policy"
+    When  an HTTP PUT with bearer token "gk_token" is sent to "https://localhost:9014/v1/policy/containment-policy"
           """
           {
             "collectors": ["did:example:ray_stantz"],
@@ -138,7 +138,7 @@ Feature: Gatekeeper API
     Then  response status is "200 OK"
      And  response contains non-empty "query_id"
 
-    When  an HTTP POST with "(request-target),date,digest" headers signed by "Handler" is sent to "https://localhost:9014/v1/extract" with body
+    When  an HTTP POST is sent to "https://localhost:9014/v1/extract"
           """
           {
             "query_id": "{{ .Value "query_id" }}"

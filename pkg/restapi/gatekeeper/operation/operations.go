@@ -98,6 +98,8 @@ func (o *Operation) GetRESTHandlers() []handler.Handler {
 //
 // Creates policy configuration for storing and releasing protected data.
 //
+// Authorization: Bearer token
+//
 // Responses:
 //     200: createPolicyResp
 //     default: errorResp
@@ -126,6 +128,8 @@ func (o *Operation) createPolicyHandler(rw http.ResponseWriter, r *http.Request)
 // protectHandler swagger:route POST /v1/protect gatekeeper protectReq
 //
 // Converts a social media handle (or other sensitive string data) into a DID.
+//
+// Authorization: HTTP Signatures (headers="(request-target) date digest")
 //
 // Responses:
 //     200: protectResp
@@ -159,6 +163,8 @@ func (o *Operation) protectHandler(rw http.ResponseWriter, r *http.Request) {
 // releaseHandler swagger:route POST /v1/release gatekeeper releaseReq
 //
 // Creates a new release transaction (ticket) on a DID.
+//
+// Authorization: HTTP Signatures (headers="(request-target) date")
 //
 // Responses:
 //     200: releaseResp
@@ -199,6 +205,8 @@ func (o *Operation) releaseHandler(rw http.ResponseWriter, r *http.Request) {
 // authorizeHandler swagger:route POST /v1/release/{ticket_id}/authorize gatekeeper authorizeReq
 //
 // Authorizes release transaction (ticket).
+//
+// Authorization: HTTP Signatures (headers="(request-target) date")
 //
 // Responses:
 //     200: authorizeResp
@@ -245,6 +253,8 @@ func (o *Operation) authorizeHandler(rw http.ResponseWriter, r *http.Request) {
 //
 // Gets the status of the ticket.
 //
+// Authorization: HTTP Signatures (headers="(request-target) date")
+//
 // Responses:
 //     200: ticketStatusResp
 //     default: errorResp
@@ -281,6 +291,8 @@ func (o *Operation) ticketStatusHandler(rw http.ResponseWriter, r *http.Request)
 // collectHandler swagger:route POST /v1/release/{ticket_id}/collect gatekeeper collectReq
 //
 // Generates extract query for the ticket that has completed authorization process.
+//
+// Authorization: HTTP Signatures (headers="(request-target) date")
 //
 // Responses:
 //     200: collectResp
