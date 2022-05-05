@@ -329,7 +329,7 @@ func (o *Operation) collectHandler(rw http.ResponseWriter, r *http.Request) {
 
 	queryID, err := o.CollectService.Collect(r.Context(), protectedData, subDID)
 	if err != nil {
-		respondError(rw, http.StatusInternalServerError, errors.New("fail to collect data"))
+		respondError(rw, http.StatusInternalServerError, fmt.Errorf("fail to collect data: %w", err))
 
 		return
 	}
@@ -356,7 +356,7 @@ func (o *Operation) extractHandler(rw http.ResponseWriter, r *http.Request) {
 
 	target, err := o.ExtractService.Extract(r.Context(), req.QueryID)
 	if err != nil {
-		respondError(rw, http.StatusInternalServerError, errors.New("fail to resolve subject"))
+		respondError(rw, http.StatusInternalServerError, fmt.Errorf("fail to resolve extract data: %w", err))
 
 		return
 	}

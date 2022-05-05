@@ -6,7 +6,7 @@ SPDX-License-Identifier: Apache-2.0
 package extract
 
 //nolint:lll
-//go:generate mockgen -destination gomocks_test.go -package extract_test -source=service.go -mock_names comparatorClient=MockComparator
+//go:generate mockgen -destination gomocks_test.go -package extract_test -source=service.go -mock_names cshClient=MockCSHClient
 
 import (
 	"context"
@@ -15,52 +15,50 @@ import (
 
 	"github.com/google/uuid"
 
-	compclientops "github.com/trustbloc/ace/pkg/client/comparator/client/operations"
-	compmodel "github.com/trustbloc/ace/pkg/client/comparator/models"
+	"github.com/trustbloc/ace/pkg/client/csh/client/operations"
+	cshclientmodels "github.com/trustbloc/ace/pkg/client/csh/models"
 )
 
 const (
 	requestTimeout = 30 * time.Second
 )
 
-type comparatorClient interface {
-	PostExtract(params *compclientops.PostExtractParams, opts ...compclientops.ClientOption) (*compclientops.PostExtractOK, error) //nolint:lll
+type cshClient interface {
+	PostExtract(params *operations.PostExtractParams,
+		opts ...operations.ClientOption) (*operations.PostExtractOK, error)
 }
 
 // Service is a service for extracting protected resources.
 type Service struct {
-	compClient comparatorClient
+	cshClient cshClient
 }
 
 // NewService returns extract service.
-func NewService(compClient comparatorClient) *Service {
+func NewService(cshClient cshClient) *Service {
 	return &Service{
-		compClient: compClient,
+		cshClient: cshClient,
 	}
 }
 
 // Extract extracts protected data from access handle.
-func (s *Service) Extract(_ context.Context, authToken string) (string, error) {
-	query := &compmodel.AuthorizedQuery{AuthToken: &authToken}
-	query.SetID(uuid.NewString())
+func (s *Service) Extract(_ context.Context, queryID string) (string, error) {
+	refQuery := &cshclientmodels.RefQuery{Ref: &queryID}
+	refQuery.SetID(uuid.NewString())
 
-	request := &compmodel.Extract{}
-	request.SetQueries([]compmodel.Query{
-		query,
-	})
-
-	extractRes, err := s.compClient.PostExtract(
-		compclientops.NewPostExtractParams().WithTimeout(requestTimeout).WithExtract(request),
+	extractions, err := s.cshClient.PostExtract(
+		operations.NewPostExtractParams().
+			WithTimeout(requestTimeout).
+			WithRequest([]cshclientmodels.Query{refQuery}),
 	)
 	if err != nil {
 		return "", fmt.Errorf("extract: %w", err)
 	}
 
-	if len(extractRes.Payload.Documents) != 1 {
+	if len(extractions.Payload) != 1 {
 		return "", fmt.Errorf("extract: invalid extract response len")
 	}
 
-	content, ok := extractRes.Payload.Documents[0].Contents.(string)
+	content, ok := extractions.Payload[0].Document.(string)
 	if !ok {
 		return "", fmt.Errorf("extract: invalid content type, should be string")
 	}

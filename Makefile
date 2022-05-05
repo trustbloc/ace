@@ -58,7 +58,7 @@ unit-test: mocks
 	@scripts/check_unit.sh
 
 .PHONY: bdd-test
-bdd-test: generate-test-keys gatekeeper-docker comparator-rest-docker vault-server-docker confidential-storage-hub-docker bdd-init-docker
+bdd-test: generate-test-keys gatekeeper-docker comparator-rest-docker vault-server-docker confidential-storage-hub-docker
 	@cd test/bdd && go test -count=1 -v -cover . -p 1 -timeout=10m -race
 
 .PHONY: generate-test-keys
@@ -110,12 +110,6 @@ confidential-storage-hub-docker:
 	@docker build -f ./images/confidential-storage-hub/Dockerfile --no-cache -t ${DOCKER_OUTPUT_NS}/${CONFIDENTIAL_STORAGE_HUB_IMAGE_NAME}:latest \
 		--build-arg GO_VER=${GO_VER} \
 		--build-arg ALPINE_VER=${ALPINE_VER} .
-
-.PHONY: bdd-init-docker
-bdd-init-docker:
-	@echo "Building bdd init image"
-	@docker build -f ./test/bdd/fixtures/init/Dockerfile -t bdd-init:latest \
-	--build-arg ALPINE_VER=$(ALPINE_VER) .
 
 .PHONY: open-api-spec
 open-api-spec:

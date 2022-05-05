@@ -18,8 +18,10 @@ services:
       - DATABASE_URL=mongodb://mongodb.trustbloc.local:27017
       - DATABASE_PREFIX=gatekeeper_
       - GK_VAULT_SERVER_URL=https://vault.trustbloc.local:${VAULT_SERVER_PORT}
-      - GK_VC_ISSUER_URL=http://vc-issuer.trustbloc.local:${ISSUER_VC_PORT}/vc-issuer-gk
-      - GK_COMPARATOR_URL=https://comparator.trustbloc.local:${COMPARATOR_REST_PORT}
+      - GK_VC_ISSUER_URL=http://vc-issuer.trustbloc.local:${ISSUER_VC_PORT}
+      - GK_VC_ISSUER_PROFILE=vc-issuer-gk
+      - GK_DID_ANCHOR_ORIGIN=https://testnet.orb.local
+      - GK_CSH_URL=https://csh.trustbloc.local:${CSH_REST_PORT}
       - GK_BLOC_DOMAIN=testnet.orb.local
       - GK_VC_REQUEST_TOKENS=vcs_issuer=vcs_issuer_rw_token
       - GK_REST_API_TOKEN=gk_token
@@ -28,7 +30,8 @@ services:
       - "9014:9014"
     volumes:
       - ./keys/tls:/etc/tls
-    command: start
+    entrypoint: ""
+    command: /bin/sh -c "sleep 5;gatekeeper start"
     depends_on:
       - mongodb.trustbloc.local
       - did-resolver.trustbloc.local
@@ -280,18 +283,6 @@ services:
     image: ${MONGODB_IMAGE}:${MONGODB_IMAGE_TAG}
     ports:
       - ${MONGODB_PORT}:${MONGODB_PORT}
-    networks:
-      - bdd_net
-
-  bdd-init:
-    container_name: bdd-init
-    image: bdd-init:latest
-    volumes:
-      - ./init/configure.sh:/opt/configure.sh
-      - ./keys/tls:/etc/tls
-    depends_on:
-      - vc-issuer.trustbloc.local
-      - comparator.trustbloc.local
     networks:
       - bdd_net
 

@@ -7,6 +7,7 @@ SPDX-License-Identifier: Apache-2.0
 package startcmd
 
 import (
+	"context"
 	"crypto/tls"
 	"fmt"
 	"net/http"
@@ -19,17 +20,21 @@ import (
 	"github.com/hyperledger/aries-framework-go-ext/component/vdr/orb"
 	"github.com/hyperledger/aries-framework-go/pkg/common/log"
 	vdrapi "github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdr"
+	"github.com/hyperledger/aries-framework-go/pkg/kms/localkms"
+	"github.com/hyperledger/aries-framework-go/pkg/secretlock"
+	"github.com/hyperledger/aries-framework-go/pkg/secretlock/noop"
 	vdrpkg "github.com/hyperledger/aries-framework-go/pkg/vdr"
 	"github.com/hyperledger/aries-framework-go/pkg/vdr/httpbinding"
+	"github.com/hyperledger/aries-framework-go/spi/storage"
 	"github.com/rs/cors"
 	"github.com/spf13/cobra"
 	cmdutils "github.com/trustbloc/edge-core/pkg/utils/cmd"
 	tlsutils "github.com/trustbloc/edge-core/pkg/utils/tls"
 
 	"github.com/trustbloc/ace/cmd/common"
-	compclient "github.com/trustbloc/ace/pkg/client/comparator/client"
-	"github.com/trustbloc/ace/pkg/client/comparator/client/operations"
+	"github.com/trustbloc/ace/pkg/client/csh/client"
 	vaultclient "github.com/trustbloc/ace/pkg/client/vault"
+	"github.com/trustbloc/ace/pkg/gatekeeper/config"
 	"github.com/trustbloc/ace/pkg/restapi/gatekeeper"
 	"github.com/trustbloc/ace/pkg/restapi/handler"
 	"github.com/trustbloc/ace/pkg/restapi/healthcheck"
@@ -87,15 +92,27 @@ const (
 	vaultServerURLFlagUsage = "URL of the vault server. This field is mandatory."
 	vaultServerURLEnvKey    = "GK_VAULT_SERVER_URL"
 
-	// comparator server url.
-	comparatorURLFlagName  = "comparator-url"
-	comparatorURLFlagUsage = "URL of the comparator. This field is mandatory."
-	comparatorURLEnvKey    = "GK_COMPARATOR_URL"
+	// did anchor origin.
+	didAnchorOriginFlagName  = "did-anchor-origin"
+	didAnchorOriginEnvKey    = "GK_DID_ANCHOR_ORIGIN"
+	didAnchorOriginFlagUsage = "DID anchor origin. This field is mandatory." +
+		" Alternatively, this can be set with the following environment variable: " +
+		didAnchorOriginEnvKey
+
+	// csh url.
+	cshURLFlagName  = "csh-url"
+	cshURLFlagUsage = "URL of the csh. This field is mandatory."
+	cshURLEnvKey    = "GK_CSH_URL"
 
 	// vc issuer server url.
 	vcIssuerURLFlagName  = "vc-issuer-url"
 	vcIssuerURLFlagUsage = "URL of the VC VCIssuer service. This field is mandatory."
 	vcIssuerURLEnvKey    = "GK_VC_ISSUER_URL"
+
+	// vc issuer profile.
+	vcIssuerProfileFlagName  = "vc-issuer-profile"
+	vcIssuerProfileFlagUsage = "Profile of the VC VCIssuer service. This field is mandatory."
+	vcIssuerProfileEnvKey    = "GK_VC_ISSUER_PROFILE"
 
 	vcRequestTokensFlagName  = "vc-request-tokens"
 	vcRequestTokensEnvKey    = "GK_VC_REQUEST_TOKENS" //nolint:gosec
@@ -109,6 +126,7 @@ const (
 
 	tokenLength2              = 2
 	vcsIssuerRequestTokenName = "vcs_issuer"
+	keystorePrimaryKeyURI     = "local-lock://localkms"
 )
 
 var logger = log.New("gatekeeper-rest")
@@ -129,8 +147,10 @@ type serviceParameters struct {
 	contextProviderURLs []string
 	vcRequestTokens     map[string]string
 	vcIssuerURL         string
+	vcIssuerProfile     string
 	vaultServerURL      string
-	comparatorURL       string
+	didAnchorOrigin     string
+	cshURL              string
 	authToken           string
 }
 
@@ -242,13 +262,24 @@ func getParameters(cmd *cobra.Command) (*serviceParameters, error) { //nolint: f
 		return nil, err
 	}
 
-	comparatorURL, err := cmdutils.GetUserSetVarFromString(cmd, comparatorURLFlagName,
-		comparatorURLEnvKey, false)
+	didAnchorOrigin, err := cmdutils.GetUserSetVarFromString(cmd, didAnchorOriginFlagName,
+		didAnchorOriginEnvKey, false)
+	if err != nil {
+		return nil, err
+	}
+
+	cshURL, err := cmdutils.GetUserSetVarFromString(cmd, cshURLFlagName,
+		cshURLEnvKey, false)
 	if err != nil {
 		return nil, err
 	}
 
 	vcIssuerURL, err := cmdutils.GetUserSetVarFromString(cmd, vcIssuerURLFlagName, vcIssuerURLEnvKey, false)
+	if err != nil {
+		return nil, err
+	}
+
+	vcIssuerProfile, err := cmdutils.GetUserSetVarFromString(cmd, vcIssuerProfileFlagName, vcIssuerProfileEnvKey, false)
 	if err != nil {
 		return nil, err
 	}
@@ -270,8 +301,10 @@ func getParameters(cmd *cobra.Command) (*serviceParameters, error) { //nolint: f
 		contextProviderURLs: contextProviderURLs,
 		vcRequestTokens:     vcRequestTokens,
 		vcIssuerURL:         vcIssuerURL,
+		vcIssuerProfile:     vcIssuerProfile,
 		vaultServerURL:      vaultServerURL,
-		comparatorURL:       comparatorURL,
+		didAnchorOrigin:     didAnchorOrigin,
+		cshURL:              cshURL,
 		authToken:           authToken,
 	}, err
 }
@@ -286,15 +319,17 @@ func createFlags(cmd *cobra.Command) {
 	cmd.Flags().StringP(didResolverURLFlagName, "", "", didResolverURLFlagUsage)
 	cmd.Flags().StringArrayP(contextProviderFlagName, "", []string{}, contextProviderFlagUsage)
 	cmd.Flags().StringP(vaultServerURLFlagName, "", "", vaultServerURLFlagUsage)
-	cmd.Flags().StringP(comparatorURLFlagName, "", "", comparatorURLFlagUsage)
+	cmd.Flags().StringP(didAnchorOriginFlagName, "", "", didAnchorOriginFlagUsage)
+	cmd.Flags().StringP(cshURLFlagName, "", "", cshURLFlagUsage)
 	cmd.Flags().StringP(vcIssuerURLFlagName, "", "", vcIssuerURLFlagUsage)
+	cmd.Flags().StringP(vcIssuerProfileFlagName, "", "", vcIssuerProfileFlagUsage)
 	cmd.Flags().StringArrayP(vcRequestTokensFlagName, "", []string{}, vcRequestTokensFlagUsage)
 	cmd.Flags().StringP(authTokenFlagName, "", "", authTokenFlagUsage)
 
 	common.Flags(cmd)
 }
 
-func startService(params *serviceParameters, srv server) error { // nolint: funlen
+func startService(params *serviceParameters, srv server) error { // nolint: funlen,gocyclo
 	rootCAs, err := tlsutils.GetCertPool(params.tlsParams.systemCertPool, params.tlsParams.caCerts)
 	if err != nil {
 		return err
@@ -338,21 +373,43 @@ func startService(params *serviceParameters, srv server) error { // nolint: funl
 
 	vClient := vaultclient.New(params.vaultServerURL, vaultclient.WithHTTPClient(httpClient))
 
-	compClient := createComparatorClient(params.comparatorURL, httpClient)
+	cshClient := createCSHClient(params.cshURL, httpClient).Operations
 
 	vcIssuer := vcissuer.New(&vcissuer.Config{
 		VCIssuerURL:    params.vcIssuerURL,
 		AuthToken:      params.vcRequestTokens[vcsIssuerRequestTokenName],
+		ProfileName:    params.vcIssuerProfile,
 		DocumentLoader: documentLoader,
 		HTTPClient:     httpClient,
 	})
 
+	keyManager, err := localkms.New(keystorePrimaryKeyURI, &kmsProvider{
+		storageProvider: storeProvider,
+		secretLock:      &noop.NoLock{},
+	})
+	if err != nil {
+		return err
+	}
+
+	configService, err := config.NewService(&config.ServiceParams{
+		StoreProvider:   storeProvider,
+		CSHClient:       cshClient,
+		VDR:             vdr,
+		KeyManager:      keyManager,
+		DidMethod:       orb.DIDMethod,
+		DidAnchorOrigin: params.didAnchorOrigin,
+	})
+	if err != nil {
+		return err
+	}
+
 	service, err := gatekeeper.New(&gatekeeper.Config{
-		StorageProvider:  storeProvider,
-		VaultClient:      vClient,
-		ComparatorClient: compClient,
-		VDR:              vdr,
-		VCIssuer:         vcIssuer,
+		StorageProvider:        storeProvider,
+		VaultClient:            vClient,
+		ConfigService:          configService,
+		VDR:                    vdr,
+		VCIssuer:               vcIssuer,
+		ConfidentialStorageHub: cshClient,
 	})
 	if err != nil {
 		return err
@@ -379,6 +436,36 @@ func startService(params *serviceParameters, srv server) error { // nolint: funl
 		router.Handle(operation.Path(), h).Methods(operation.Method())
 	}
 
+	hasConfig, err := configService.HasConfig()
+	if err != nil {
+		return err
+	}
+
+	if !hasConfig {
+		err = configService.CreateConfig()
+		if err != nil {
+			return err
+		}
+
+		var conf *config.Config
+
+		conf, err = configService.Get()
+		if err != nil {
+			return err
+		}
+
+		err = vcIssuer.CreateIssuerProfile(
+			context.Background(),
+			conf.DID,
+			conf.PubKeyID,
+			conf.PrivateKey,
+		)
+
+		if err != nil {
+			return err
+		}
+	}
+
 	// start server on given port and serve using given handlers
 	return srv.ListenAndServe(params.host, params.tlsParams.serveCertPath, params.tlsParams.serveKeyPath,
 		cors.New(cors.Options{
@@ -398,17 +485,17 @@ func startService(params *serviceParameters, srv server) error { // nolint: funl
 		}).Handler(router))
 }
 
-func createComparatorClient(comparatorURL string, httpClient *http.Client) operations.ClientService {
-	urlParts := strings.Split(comparatorURL, "://")
+func createCSHClient(cshURL string, httpClient *http.Client) *client.ConfidentialStorageHub {
+	cshURLParts := strings.Split(cshURL, "://")
 
 	transport := httptransport.NewWithClient(
-		urlParts[1],
-		compclient.DefaultBasePath,
-		[]string{urlParts[0]},
+		cshURLParts[1],
+		client.DefaultBasePath,
+		[]string{cshURLParts[0]},
 		httpClient,
 	)
 
-	return compclient.New(transport, strfmt.Default).Operations
+	return client.New(transport, strfmt.Default)
 }
 
 func getVCRequestTokens(cmd *cobra.Command) (map[string]string, error) {
@@ -460,4 +547,17 @@ func createVDR(didResolverURL, blocDomain string, httpClient *http.Client) (vdra
 	}
 
 	return vdrpkg.New(opts...), nil
+}
+
+type kmsProvider struct {
+	storageProvider storage.Provider
+	secretLock      secretlock.Service
+}
+
+func (k kmsProvider) StorageProvider() storage.Provider {
+	return k.storageProvider
+}
+
+func (k kmsProvider) SecretLock() secretlock.Service {
+	return k.secretLock
 }
