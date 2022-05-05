@@ -13,9 +13,10 @@ import (
 	"github.com/hyperledger/aries-framework-go/pkg/framework/aries/api/vdr"
 	"github.com/hyperledger/aries-framework-go/spi/storage"
 
-	comparator "github.com/trustbloc/ace/pkg/client/comparator/client/operations"
+	"github.com/trustbloc/ace/pkg/client/csh/client/operations"
 	"github.com/trustbloc/ace/pkg/client/vault"
 	"github.com/trustbloc/ace/pkg/gatekeeper/collect"
+	"github.com/trustbloc/ace/pkg/gatekeeper/config"
 	"github.com/trustbloc/ace/pkg/gatekeeper/extract"
 	"github.com/trustbloc/ace/pkg/gatekeeper/policy"
 	"github.com/trustbloc/ace/pkg/gatekeeper/protect"
@@ -28,32 +29,33 @@ import (
 
 // Config defines configuration for Gatekeeper operations.
 type Config struct {
-	StorageProvider  storage.Provider
-	VaultClient      vault.Vault
-	ComparatorClient comparator.ClientService
-	VDR              vdr.Registry
-	VCIssuer         *vcissuer.Service
+	StorageProvider        storage.Provider
+	VaultClient            vault.Vault
+	ConfigService          *config.Service
+	VDR                    vdr.Registry
+	VCIssuer               *vcissuer.Service
+	ConfidentialStorageHub operations.ClientService
 }
 
 // New returns a new Controller instance.
-func New(config *Config) (*Controller, error) {
-	policyService, err := policy.NewService(config.StorageProvider)
+func New(cfg *Config) (*Controller, error) {
+	policyService, err := policy.NewService(cfg.StorageProvider)
 	if err != nil {
 		return nil, fmt.Errorf("create policy service: %w", err)
 	}
 
 	protectService, err := protect.NewService(&protect.Config{
-		StoreProvider: config.StorageProvider,
-		VaultClient:   config.VaultClient,
-		VDR:           config.VDR,
-		VCIssuer:      config.VCIssuer,
+		StoreProvider: cfg.StorageProvider,
+		VaultClient:   cfg.VaultClient,
+		VDR:           cfg.VDR,
+		VCIssuer:      cfg.VCIssuer,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("create protect service: %w", err)
 	}
 
 	releaseService, err := release.NewService(&release.Config{
-		StoreProvider:  config.StorageProvider,
+		StoreProvider:  cfg.StorageProvider,
 		PolicyService:  policyService,
 		ProtectService: protectService,
 	})
@@ -61,8 +63,13 @@ func New(config *Config) (*Controller, error) {
 		return nil, fmt.Errorf("create release service: %w", err)
 	}
 
-	collectService := collect.NewService(config.ComparatorClient, config.VaultClient)
-	extractService := extract.NewService(config.ComparatorClient)
+	collectService := collect.NewService(
+		cfg.ConfigService,
+		cfg.VaultClient,
+		cfg.ConfidentialStorageHub,
+	)
+
+	extractService := extract.NewService(cfg.ConfidentialStorageHub)
 
 	op := &operation.Operation{
 		PolicyService:   policyService,

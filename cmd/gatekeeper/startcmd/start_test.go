@@ -99,7 +99,9 @@ func TestNotSupportedDSN(t *testing.T) {
 		"--" + didResolverURLFlagName, "https://did-resolver-url",
 		"--" + vaultServerURLFlagName, "https://vault-server-url",
 		"--" + vcIssuerURLFlagName, "https://vc-isssuer-url",
-		"--" + comparatorURLFlagName, "https://comparator-url",
+		"--" + didAnchorOriginFlagName, "https://did-anchor-orign",
+		"--" + cshURLFlagName, "https://csh-url",
+		"--" + vcIssuerProfileFlagName, "test-profile",
 	}
 	startCmd.SetArgs(args)
 
@@ -131,12 +133,14 @@ func TestStartCmdValidArgs(t *testing.T) {
 		"--" + didResolverURLFlagName, "https://did-resolver-url",
 		"--" + vaultServerURLFlagName, "https://vault-server-url",
 		"--" + vcIssuerURLFlagName, "https://vc-isssuer-url",
-		"--" + comparatorURLFlagName, "https://comparator-url",
+		"--" + didAnchorOriginFlagName, "https://did-anchor-orign",
+		"--" + cshURLFlagName, "https://csh-url",
+		"--" + vcIssuerProfileFlagName, "test-profile",
 	}
 	startCmd.SetArgs(args)
 
 	err := startCmd.Execute()
-	require.NoError(t, err)
+	require.Contains(t, err.Error(), "failed to create DID")
 }
 
 func TestTLSInvalidArgs(t *testing.T) {

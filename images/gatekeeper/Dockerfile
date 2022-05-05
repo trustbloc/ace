@@ -16,7 +16,7 @@ WORKDIR $GOPATH/src/github.com/trustbloc/ace/
 
 RUN cd cmd/gatekeeper && CGO_ENABLED=0 go build -o /usr/bin/gatekeeper main.go
 
-FROM scratch
+FROM alpine:${ALPINE_VER}
 LABEL org.opencontainers.image.source https://github.com/trustbloc/ace
 
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
