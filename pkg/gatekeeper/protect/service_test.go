@@ -63,7 +63,7 @@ func TestProtect_StoreGetExist(t *testing.T) {
 	testData, err := json.Marshal(&protect.ProtectedData{DID: "test did"})
 	require.NoError(t, err)
 
-	hash, err := calculateHash("test data")
+	hash, err := calculateHash("test data", testPolicyID)
 	require.NoError(t, err)
 
 	store.Store.Store[hash] = storage.DBEntry{Value: testData}
@@ -80,17 +80,17 @@ func TestProtect_StoreGetExist(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	protectedData, err := svc.Protect(context.Background(), "test data", "policyID")
+	protectedData, err := svc.Protect(context.Background(), "test data", testPolicyID)
 
 	require.NoError(t, err)
 	require.Equal(t, protectedData.DID, "test did")
 }
 
-func calculateHash(data string) (string, error) {
+func calculateHash(target, policyID string) (string, error) {
 	h := fnv.New128()
 
-	if _, err := h.Write([]byte(data)); err != nil {
-		return "", fmt.Errorf("calculate data hash: %w", err)
+	if _, err := fmt.Fprintf(h, "%s_%s", target, policyID); err != nil {
+		return "", fmt.Errorf("calculate hash for target: %w", err)
 	}
 
 	return string(h.Sum(nil)), nil

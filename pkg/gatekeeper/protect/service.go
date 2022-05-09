@@ -139,7 +139,7 @@ func (s *Service) Get(_ context.Context, targetDID string) (*ProtectedData, erro
 
 // Protect converts sensitive data into DID.
 func (s *Service) Protect(ctx context.Context, target, policyID string) (*ProtectedData, error) {
-	hash, err := calculateHash(target)
+	hash, err := calculateHash(target, policyID)
 	if err != nil {
 		return nil, fmt.Errorf("calculate hash: %w", err)
 	}
@@ -246,11 +246,11 @@ func (s *Service) saveVCDoc(vaultID string, vc *verifiable.Credential) (string, 
 	return docID, nil
 }
 
-func calculateHash(data string) (string, error) {
+func calculateHash(target, policyID string) (string, error) {
 	h := fnv.New128()
 
-	if _, err := h.Write([]byte(data)); err != nil {
-		return "", fmt.Errorf("calculate data hash: %w", err)
+	if _, err := fmt.Fprintf(h, "%s_%s", target, policyID); err != nil {
+		return "", fmt.Errorf("calculate hash for target: %w", err)
 	}
 
 	return string(h.Sum(nil)), nil

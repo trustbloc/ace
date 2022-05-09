@@ -43,7 +43,7 @@ Feature: Gatekeeper API
     Then  response status is "200 OK"
      And  response contains non-empty "did"
 
-  Scenario: Create a new Release transaction on a DID
+  Scenario: Create a new release transaction on a DID
     Given did owner with name "Intake Processor"
       And did owner with name "Handler"
       And policy configuration with ID "release-policy"
@@ -112,7 +112,7 @@ Feature: Gatekeeper API
     When  an HTTP POST with "(request-target),date,digest" headers signed by "Intake Processor" is sent to "https://localhost:9014/v1/protect" with body
           """
           {
-            "target": "@thanos123",
+            "target": "@thanos27",
             "policy": "full-scenario-policy"
           }
           """
@@ -145,4 +145,4 @@ Feature: Gatekeeper API
           }
           """
     Then  response status is "200 OK"
-     And  response contains "target" with value "@thanos123"
+     And  response contains "target" with value "@thanos27"
