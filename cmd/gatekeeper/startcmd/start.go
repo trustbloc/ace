@@ -114,10 +114,10 @@ const (
 	vcIssuerProfileFlagUsage = "Profile of the VC VCIssuer service. This field is mandatory."
 	vcIssuerProfileEnvKey    = "GK_VC_ISSUER_PROFILE"
 
-	vcRequestTokensFlagName  = "vc-request-tokens"
-	vcRequestTokensEnvKey    = "GK_VC_REQUEST_TOKENS" //nolint:gosec
-	vcRequestTokensFlagUsage = "Tokens used for http request to vc issuer" +
-		" Alternatively, this can be set with the following environment variable: " + vcRequestTokensEnvKey
+	requestTokensFlagName  = "request-tokens"
+	requestTokensEnvKey    = "GK_REQUEST_TOKENS"
+	requestTokensFlagUsage = "Tokens used for HTTP requests to other services" +
+		" Alternatively, this can be set with the following environment variable: " + requestTokensEnvKey
 
 	authTokenFlagName  = "api-token"
 	authTokenEnvKey    = "GK_REST_API_TOKEN" //nolint: gosec
@@ -126,6 +126,7 @@ const (
 
 	tokenLength2              = 2
 	vcsIssuerRequestTokenName = "vcs_issuer"
+	sidetreeRequestTokenName  = "sidetreeToken"
 	keystorePrimaryKeyURI     = "local-lock://localkms"
 )
 
@@ -145,13 +146,13 @@ type serviceParameters struct {
 	blocDomain          string
 	didResolverURL      string
 	contextProviderURLs []string
-	vcRequestTokens     map[string]string
 	vcIssuerURL         string
 	vcIssuerProfile     string
 	vaultServerURL      string
 	didAnchorOrigin     string
 	cshURL              string
 	authToken           string
+	requestTokens       map[string]string
 }
 
 type server interface {
@@ -284,7 +285,7 @@ func getParameters(cmd *cobra.Command) (*serviceParameters, error) { //nolint: f
 		return nil, err
 	}
 
-	vcRequestTokens, err := getVCRequestTokens(cmd)
+	requestTokens, err := getRequestTokens(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -299,13 +300,13 @@ func getParameters(cmd *cobra.Command) (*serviceParameters, error) { //nolint: f
 		blocDomain:          blocDomain,
 		didResolverURL:      didResolverURL,
 		contextProviderURLs: contextProviderURLs,
-		vcRequestTokens:     vcRequestTokens,
 		vcIssuerURL:         vcIssuerURL,
 		vcIssuerProfile:     vcIssuerProfile,
 		vaultServerURL:      vaultServerURL,
 		didAnchorOrigin:     didAnchorOrigin,
 		cshURL:              cshURL,
 		authToken:           authToken,
+		requestTokens:       requestTokens,
 	}, err
 }
 
@@ -323,7 +324,7 @@ func createFlags(cmd *cobra.Command) {
 	cmd.Flags().StringP(cshURLFlagName, "", "", cshURLFlagUsage)
 	cmd.Flags().StringP(vcIssuerURLFlagName, "", "", vcIssuerURLFlagUsage)
 	cmd.Flags().StringP(vcIssuerProfileFlagName, "", "", vcIssuerProfileFlagUsage)
-	cmd.Flags().StringArrayP(vcRequestTokensFlagName, "", []string{}, vcRequestTokensFlagUsage)
+	cmd.Flags().StringArrayP(requestTokensFlagName, "", []string{}, requestTokensFlagUsage)
 	cmd.Flags().StringP(authTokenFlagName, "", "", authTokenFlagUsage)
 
 	common.Flags(cmd)
@@ -356,7 +357,8 @@ func startService(params *serviceParameters, srv server) error { // nolint: funl
 		TLSClientConfig: tlsConfig,
 	}}
 
-	vdr, err := createVDR(params.didResolverURL, params.blocDomain, httpClient)
+	vdr, err := createVDR(params.didResolverURL, params.blocDomain, params.requestTokens[sidetreeRequestTokenName],
+		httpClient)
 	if err != nil {
 		return err
 	}
@@ -377,7 +379,7 @@ func startService(params *serviceParameters, srv server) error { // nolint: funl
 
 	vcIssuer := vcissuer.New(&vcissuer.Config{
 		VCIssuerURL:    params.vcIssuerURL,
-		AuthToken:      params.vcRequestTokens[vcsIssuerRequestTokenName],
+		AuthToken:      params.requestTokens[vcsIssuerRequestTokenName],
 		ProfileName:    params.vcIssuerProfile,
 		DocumentLoader: documentLoader,
 		HTTPClient:     httpClient,
@@ -498,9 +500,9 @@ func createCSHClient(cshURL string, httpClient *http.Client) *client.Confidentia
 	return client.New(transport, strfmt.Default)
 }
 
-func getVCRequestTokens(cmd *cobra.Command) (map[string]string, error) {
-	requestTokens, err := cmdutils.GetUserSetVarFromArrayString(cmd, vcRequestTokensFlagName,
-		vcRequestTokensEnvKey, true)
+func getRequestTokens(cmd *cobra.Command) (map[string]string, error) {
+	requestTokens, err := cmdutils.GetUserSetVarFromArrayString(cmd, requestTokensFlagName,
+		requestTokensEnvKey, true)
 	if err != nil {
 		return nil, err
 	}
@@ -520,7 +522,7 @@ func getVCRequestTokens(cmd *cobra.Command) (map[string]string, error) {
 	return tokens, nil
 }
 
-func createVDR(didResolverURL, blocDomain string, httpClient *http.Client) (vdrapi.Registry, error) { //nolint:ireturn
+func createVDR(didResolverURL, blocDomain, sidetreeToken string, httpClient *http.Client) (vdrapi.Registry, error) {
 	var opts []vdrpkg.Option
 
 	if didResolverURL != "" {
@@ -538,7 +540,8 @@ func createVDR(didResolverURL, blocDomain string, httpClient *http.Client) (vdra
 	}
 
 	if blocDomain != "" {
-		vdr, err := orb.New(nil, orb.WithDomain(blocDomain), orb.WithHTTPClient(httpClient))
+		vdr, err := orb.New(nil, orb.WithDomain(blocDomain), orb.WithHTTPClient(httpClient),
+			orb.WithAuthToken(sidetreeToken))
 		if err != nil {
 			return nil, err
 		}

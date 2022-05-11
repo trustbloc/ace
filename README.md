@@ -49,7 +49,7 @@ $ docker run -p 9014:9014 ghcr.io/trustbloc/gatekeeper:latest start [flags]
 | --vault-server-url     | GK_VAULT_SERVER_URL     | URL of the vault server.                                                          |
 | --vc-issuer-profile    | GK_VC_ISSUER_PROFILE    | Profile of the VC VCIssuer service.                                               |
 | --vc-issuer-url        | GK_VC_ISSUER_URL        | URL of the VC Issuer service.                                                     |
-| --vc-request-tokens    | GK_VC_REQUEST_TOKENS    | Tokens used for http request to VC Issuer.                                        |
+| --request-tokens       | GK_REQUEST_TOKENS       | Tokens used for HTTP requests to other services.                                  |
 
 ### REST API
 
