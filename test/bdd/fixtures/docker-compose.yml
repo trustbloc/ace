@@ -23,7 +23,7 @@ services:
       - GK_DID_ANCHOR_ORIGIN=https://testnet.orb.local
       - GK_CSH_URL=https://csh.trustbloc.local:${CSH_REST_PORT}
       - GK_BLOC_DOMAIN=testnet.orb.local
-      - GK_VC_REQUEST_TOKENS=vcs_issuer=vcs_issuer_rw_token
+      - GK_REQUEST_TOKENS=vcs_issuer=vcs_issuer_rw_token,sidetreeToken=tk1
       - GK_REST_API_TOKEN=gk_token
       - LOG_LEVEL=debug
     ports:
