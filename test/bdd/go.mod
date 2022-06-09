@@ -15,13 +15,13 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/hyperledger/aries-framework-go v0.1.9-0.20220412155017-81442062e607
 	github.com/hyperledger/aries-framework-go-ext/component/vdr/orb v1.0.0-rc.1
-	github.com/hyperledger/aries-framework-go/component/storageutil v0.0.0-20220330140627-07042d78580c
-	github.com/hyperledger/aries-framework-go/spi v0.0.0-20220330140627-07042d78580c
+	github.com/hyperledger/aries-framework-go/component/storageutil v0.0.0-20220526205258-18d510d84955
+	github.com/hyperledger/aries-framework-go/spi v0.0.0-20220526205258-18d510d84955
 	github.com/igor-pavlenko/httpsignatures-go v0.0.23
 	github.com/tidwall/gjson v1.14.0
 	github.com/trustbloc/ace v0.0.0-00010101000000-000000000000
 	github.com/trustbloc/edge-core v0.1.8
-	github.com/trustbloc/edv v0.1.7
+	github.com/trustbloc/edv v0.1.9-0.20220601135731-894c500fd71e
 )
 
 require (
@@ -79,6 +79,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/pquerna/cachecontrol v0.1.0 // indirect
+	github.com/shopspring/decimal v1.3.1 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/square/go-jose/v3 v3.0.0-20200630053402-0a67ce9b0693 // indirect
@@ -93,14 +94,14 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
-	go.mongodb.org/mongo-driver v1.8.3 // indirect
-	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce // indirect
-	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd // indirect
-	golang.org/x/sys v0.0.0-20220209214540-3681064d5158 // indirect
+	go.mongodb.org/mongo-driver v1.9.1 // indirect
+	golang.org/x/crypto v0.0.0-20220525230936-793ad666bf5e // indirect
+	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4 // indirect
+	golang.org/x/sys v0.0.0-20220503163025-988cb79eb6c6 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/genproto v0.0.0-20220222213610-43724f9ea8cf // indirect
 	google.golang.org/grpc v1.44.0 // indirect
-	google.golang.org/protobuf v1.27.1 // indirect
+	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
