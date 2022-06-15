@@ -234,7 +234,15 @@ func (c *Client) CreateVault() (*CreatedVault, error) {
 		return nil, fmt.Errorf("create DID key: %w", err)
 	}
 
-	kmsURI, kmsZCAP, err := webkms.CreateKeyStore(c.httpClient, c.remoteKMSURL, didURL, "", nil)
+	// TODO: Implement support for GNAP authorization (https://github.com/trustbloc/ace/issues/50)
+	kmsURI, kmsZCAP, err := webkms.CreateKeyStore(c.httpClient, c.remoteKMSURL, didURL, "", nil,
+		webkms.WithHeaders(func(req *http.Request) (*http.Header, error) {
+			h := req.Header.Clone()
+			h.Set("Authorization", "Bearer fake-token")
+
+			return &h, nil
+		}),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("create key store: %w", err)
 	}
