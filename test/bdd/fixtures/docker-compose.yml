@@ -247,7 +247,7 @@ services:
       - EDV_EXTENSIONS=ReturnFullDocumentsOnQuery,Batch
       - EDV_DID_DOMAIN=testnet.orb.local
       - EDV_DATABASE_TIMEOUT=60
-      - EDV_AUTH_ENABLE=true
+      - EDV_AUTH_TYPE=ZCAP
       - EDV_LOG_LEVEL=debug
     ports:
       - "8081:8081"
