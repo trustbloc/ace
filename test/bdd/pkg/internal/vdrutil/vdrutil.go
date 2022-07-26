@@ -12,6 +12,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -25,14 +26,9 @@ import (
 	vccrypto "github.com/trustbloc/ace/pkg/doc/vc/crypto"
 )
 
-const (
-	orbDomain       = "testnet.orb.local"
-	didAnchorOrigin = "https://" + orbDomain
-)
-
 // CreateVDR creates vdrapi.Registry used by bdd tests.
 func CreateVDR(httpClient *http.Client) (vdrapi.Registry, error) {
-	orbVDR, err := orb.New(nil, orb.WithDomain(orbDomain),
+	orbVDR, err := orb.New(nil, orb.WithDomain(os.Getenv("ORB_DOMAIN")),
 		orb.WithHTTPClient(httpClient),
 	)
 	if err != nil {
@@ -130,7 +126,7 @@ func CreateDIDDoc(vdr vdrapi.Registry) (*docdid.Doc, ed25519.PrivateKey, error) 
 	docResolution, err := vdr.Create(orb.DIDMethod, didDoc,
 		vdrapi.WithOption(orb.RecoveryPublicKeyOpt, recoverKey),
 		vdrapi.WithOption(orb.UpdatePublicKeyOpt, updateKey),
-		vdrapi.WithOption(orb.AnchorOriginOpt, didAnchorOrigin),
+		vdrapi.WithOption(orb.AnchorOriginOpt, "https://"+os.Getenv("ORB_DOMAIN")),
 	)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to create DID : %w", err)
