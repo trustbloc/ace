@@ -94,7 +94,8 @@ Feature: Gatekeeper API
     Then  response status is "200 OK"
      And  response contains "status" with value "READY_TO_COLLECT"
 
-  Scenario: Protect and extract social media handle (entire flow)
+  @gatekeeper_e2e
+  Scenario: Protect and extract social media handle (e2e flow)
     Given did owner with name "Intake Processor"
       And did owner with name "Handler"
       And did owner with name "Approver 1"
@@ -109,7 +110,7 @@ Feature: Gatekeeper API
           }
           """
 
-    When  an HTTP POST with "(request-target),date,digest" headers signed by "Intake Processor" is sent to "https://localhost:9014/v1/protect" with body
+    When  an HTTP POST with "(request-target),date,digest" headers signed by "Intake Processor" is sent to "https://GATEKEEPER_HOST/v1/protect" with body
           """
           {
             "target": "@thanos27",
@@ -119,7 +120,7 @@ Feature: Gatekeeper API
     Then  response status is "200 OK"
      And  response contains non-empty "did"
 
-    When  an HTTP POST with "(request-target),date,digest" headers signed by "Handler" is sent to "https://localhost:9014/v1/release" with body
+    When  an HTTP POST with "(request-target),date,digest" headers signed by "Handler" is sent to "https://GATEKEEPER_HOST/v1/release" with body
           """
           {
             "did": "{{ .Value "did" }}"
@@ -128,17 +129,17 @@ Feature: Gatekeeper API
     Then  response status is "200 OK"
      And  response contains non-empty "ticket_id"
 
-    When  an HTTP POST with "(request-target),date" headers signed by "Approver 1" is sent to "https://localhost:9014/v1/release/{ticket_id}/authorize"
+    When  an HTTP POST with "(request-target),date" headers signed by "Approver 1" is sent to "https://GATEKEEPER_HOST/v1/release/{ticket_id}/authorize"
     Then  response status is "200 OK"
 
-    When  an HTTP POST with "(request-target),date" headers signed by "Approver 2" is sent to "https://localhost:9014/v1/release/{ticket_id}/authorize"
+    When  an HTTP POST with "(request-target),date" headers signed by "Approver 2" is sent to "https://GATEKEEPER_HOST/v1/release/{ticket_id}/authorize"
     Then  response status is "200 OK"
 
-    When  an HTTP POST with "(request-target),date" headers signed by "Handler" is sent to "https://localhost:9014/v1/release/{ticket_id}/collect"
+    When  an HTTP POST with "(request-target),date" headers signed by "Handler" is sent to "https://GATEKEEPER_HOST/v1/release/{ticket_id}/collect"
     Then  response status is "200 OK"
      And  response contains non-empty "query_id"
 
-    When  an HTTP POST is sent to "https://localhost:9014/v1/extract"
+    When  an HTTP POST is sent to "https://GATEKEEPER_HOST/v1/extract"
           """
           {
             "query_id": "{{ .Value "query_id" }}"

@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"text/template"
 
 	"github.com/cucumber/godog"
@@ -40,6 +41,7 @@ type Steps struct {
 	policyID  string
 	targetDID string
 	ticketID  string
+	host      string
 }
 
 // NewSteps returns new Steps context.
@@ -47,6 +49,7 @@ func NewSteps(commonSteps *common.Steps) *Steps {
 	return &Steps{
 		cs:        commonSteps,
 		didOwners: make(map[string]*DIDOwner),
+		host:      os.Getenv("GATEKEEPER_HOST"),
 	}
 }
 
@@ -97,7 +100,7 @@ func (s *Steps) createPolicy(ctx context.Context, policyID string, policy *godog
 		return fmt.Errorf("execute template: %w", err)
 	}
 
-	_, err = httputil.DoRequest(ctx, "https://localhost:9014/v1/policy/"+policyID,
+	_, err = httputil.DoRequest(ctx, fmt.Sprintf("https://%s/v1/policy/%s", s.host, policyID),
 		httputil.WithHTTPClient(s.cs.HTTPClient), httputil.WithMethod(http.MethodPut), httputil.WithBody(buf.Bytes()),
 		httputil.WithAuthToken(authToken))
 	if err != nil {
@@ -127,7 +130,7 @@ func (s *Steps) convertIntoDID(ctx context.Context, handle, didOwner string) (co
 
 	var resp protectResponse
 
-	_, err = httputil.DoRequest(ctx, "https://localhost:9014/v1/protect",
+	_, err = httputil.DoRequest(ctx, fmt.Sprintf("https://%s/v1/protect", s.host),
 		httputil.WithMethod(http.MethodPost),
 		httputil.WithBody(reqBytes),
 		httputil.WithHTTPClient(s.cs.HTTPClient),
@@ -163,7 +166,7 @@ func (s *Steps) createTicket(ctx context.Context, didOwner string) (context.Cont
 
 	var resp releaseResponse
 
-	_, err = httputil.DoRequest(ctx, "https://localhost:9014/v1/release",
+	_, err = httputil.DoRequest(ctx, fmt.Sprintf("https://%s/v1/release", s.host),
 		httputil.WithHTTPClient(s.cs.HTTPClient),
 		httputil.WithMethod(http.MethodPost),
 		httputil.WithBody(reqBytes),

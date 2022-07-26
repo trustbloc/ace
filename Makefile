@@ -59,7 +59,7 @@ unit-test: mocks
 
 .PHONY: bdd-test
 bdd-test: generate-test-keys gatekeeper-docker comparator-rest-docker vault-server-docker confidential-storage-hub-docker
-	@cd test/bdd && go test -count=1 -v -cover . -p 1 -timeout=10m -race
+	@cd test/bdd && GATEKEEPER_HOST=localhost:9014 ORB_DOMAIN=testnet.orb.local go test -count=1 -v -cover . -p 1 -timeout=10m -race
 
 .PHONY: generate-test-keys
 generate-test-keys:
@@ -116,12 +116,12 @@ open-api-spec:
 	@GOBIN=$(GOBIN_PATH) go install github.com/go-swagger/go-swagger/cmd/swagger@$(SWAGGER_VERSION)
 	@echo "Generating Open API spec"
 	@mkdir $(SWAGGER_DIR)
-	@$(GOBIN_PATH)/swagger generate spec -w ./cmd/gatekeeper -x github.com/trustbloc/orb -x github.com/trustbloc/ace/pkg/client/comparator -o $(SWAGGER_OUTPUT)
+	@$(GOBIN_PATH)/swagger generate spec -w ./cmd/gatekeeper -x github.com/trustbloc/orb -x github.com/trustbloc/ace/pkg/client/comparator -x github.com/trustbloc/ace/pkg/client/csh -o $(SWAGGER_OUTPUT)
 	@echo "Validating generated spec"
 	@$(GOBIN_PATH)/swagger validate $(SWAGGER_OUTPUT)
 
 .PHONY: open-api-demo
-open-api-demo: clean open-api-spec generate-test-keys gatekeeper-docker comparator-rest-docker vault-server-docker confidential-storage-hub-docker bdd-init-docker
+open-api-demo: clean open-api-spec generate-test-keys gatekeeper-docker comparator-rest-docker vault-server-docker confidential-storage-hub-docker
 	@echo "Running Open API demo on http://localhost:8089/openapi"
 	@docker-compose -f test/bdd/fixtures/docker-compose.yml up --force-recreate -d gatekeeper-openapi.trustbloc.local
 

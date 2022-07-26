@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strings"
 	"text/template"
 
@@ -169,6 +170,10 @@ func (s *Steps) httpDo(ctx context.Context, method, url string, bodyTemplate *go
 
 	if strings.Contains(url, "{ticket_id}") {
 		url = strings.ReplaceAll(url, "{ticket_id}", ctx.Value("ticket_id").(string)) //nolint:forcetypeassert
+	}
+
+	if strings.Contains(url, "GATEKEEPER_HOST") {
+		url = strings.ReplaceAll(url, "GATEKEEPER_HOST", os.Getenv("GATEKEEPER_HOST"))
 	}
 
 	if bodyTemplate != nil {
