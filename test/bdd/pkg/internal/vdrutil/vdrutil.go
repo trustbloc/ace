@@ -30,6 +30,7 @@ import (
 func CreateVDR(httpClient *http.Client) (vdrapi.Registry, error) {
 	orbVDR, err := orb.New(nil, orb.WithDomain(os.Getenv("ORB_DOMAIN")),
 		orb.WithHTTPClient(httpClient),
+		orb.WithAuthToken(os.Getenv("ORB_AUTH_TOKEN")),
 	)
 	if err != nil {
 		return nil, err

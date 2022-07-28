@@ -8,6 +8,7 @@ package protect_test
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -93,7 +94,7 @@ func calculateHash(target, policyID string) (string, error) {
 		return "", fmt.Errorf("calculate hash for target: %w", err)
 	}
 
-	return string(h.Sum(nil)), nil
+	return base64.URLEncoding.EncodeToString(h.Sum(nil)), nil
 }
 
 func TestProtect_CreateVaultFailed(t *testing.T) {
