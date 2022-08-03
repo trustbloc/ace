@@ -34,4 +34,7 @@ openssl x509 -req -in test/bdd/fixtures/keys/tls/ec-key.csr -CA test/bdd/fixture
 #create master key for secret lock
 openssl rand 32 | base64 | sed 's/+/-/g; s/\//_/g' > test/bdd/fixtures/keys/tls/secret-lock.key
 
+#create private key for GNAP signer (kms)
+openssl ecparam -name prime256v1 -genkey -noout -out test/bdd/fixtures/keys/gnap-kms-priv-key.pem
+
 echo "done generating ACE PKI"
