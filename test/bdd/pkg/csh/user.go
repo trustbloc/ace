@@ -128,7 +128,13 @@ func (u *user) initKeystore(baseURL string, httpClient webkms.HTTPClient) error 
 
 	u.controller = didKeyURL(u.signer.PublicKeyBytes())
 
-	keystoreURL, zcaps, err := webkms.CreateKeyStore(httpClient, baseURL, u.controller, "", nil)
+	keystoreURL, zcaps, err := webkms.CreateKeyStore(httpClient, baseURL, u.controller, "", nil,
+		webkms.WithHeaders(func(req *http.Request) (*http.Header, error) {
+			h := req.Header.Clone()
+			h.Set("Authorization", "Bearer fake-token")
+
+			return &h, nil
+		}))
 	if err != nil {
 		return fmt.Errorf("failed to create remote keystore: %w", err)
 	}

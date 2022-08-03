@@ -212,17 +212,18 @@ services:
       - KMS_DATABASE_TYPE=mongodb
       - KMS_DATABASE_URL=mongodb://mongodb.trustbloc.local:27017
       - KMS_DATABASE_PREFIX=kms_
-      - KMS_CACHE_ENABLE=true
-      - KMS_ZCAP_ENABLE=true
+      - KMS_CACHE_EXPIRATION=10m
       - KMS_LOG_LEVEL=debug
       - KMS_SECRET_LOCK_TYPE=local
       - KMS_SECRET_LOCK_KEY_PATH=/etc/tls/secret-lock.key
       - KMS_DID_DOMAIN=testnet.orb.local
+      - KMS_GNAP_SIGNING_KEY=/etc/gnap-kms-priv-key.pem
+      - KMS_AUTH_SERVER_URL=https://TODO.auth.trustbloc.local:8044
     ports:
       - ${KMS_PORT}:${KMS_PORT}
       - "48831:48831"
     volumes:
-      - ./keys/tls:/etc/tls
+      - ./keys:/etc
     command: start
     depends_on:
       - mongodb.trustbloc.local
