@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -35,14 +36,15 @@ import (
 	"github.com/trustbloc/ace/pkg/client/comparator/models"
 	vaultclient "github.com/trustbloc/ace/pkg/client/vault"
 	"github.com/trustbloc/ace/pkg/restapi/vault"
+	"github.com/trustbloc/ace/test/bdd/pkg/internal/httputil"
 	"github.com/trustbloc/ace/test/bdd/pkg/internal/vdrutil"
 )
 
 const (
-	comparatorURL  = "localhost:8065"
-	vaultURL       = "https://localhost:9099"
-	requestTimeout = 5 * time.Second
-	expiryDuration = int64(300)
+	defaultComparatorHost = "localhost:8065"
+	defaultVaultHost      = "localhost:9099"
+	requestTimeout        = 5 * time.Second
+	expiryDuration        = int64(300)
 )
 
 // Steps is steps for BDD tests.
@@ -56,6 +58,7 @@ type Steps struct {
 	edvToken       string
 	kmsToken       string
 	authorizations map[string]*models.Authorization
+	vaultHost      string
 }
 
 // NewSteps returns new steps.
@@ -66,8 +69,22 @@ func NewSteps(tlsConfig *tls.Config) (*Steps, error) {
 		},
 	}
 
+	if os.Getenv("HTTP_CLIENT_TRACE_ON") == "true" {
+		httpClient = httputil.WrapWithDumpTransport(httpClient)
+	}
+
+	comparatorHost := os.Getenv("COMPARATOR_HOST")
+	if comparatorHost == "" {
+		comparatorHost = defaultComparatorHost
+	}
+
+	vaultHost := os.Getenv("VAULT_HOST")
+	if vaultHost == "" {
+		vaultHost = defaultVaultHost
+	}
+
 	transport := httptransport.NewWithClient(
-		comparatorURL,
+		comparatorHost,
 		client.DefaultBasePath,
 		[]string{"https"},
 		httpClient,
@@ -83,6 +100,7 @@ func NewSteps(tlsConfig *tls.Config) (*Steps, error) {
 		client:         client.New(transport, strfmt.Default),
 		vdrRegistry:    vdr,
 		authorizations: make(map[string]*models.Authorization),
+		vaultHost:      vaultHost,
 	}, nil
 }
 
@@ -298,7 +316,7 @@ func (e *Steps) createVaultAuthorization(duration string) error {
 		return err
 	}
 
-	result, err := vaultclient.New(vaultURL, vaultclient.WithHTTPClient(e.httpClient)).CreateAuthorization(
+	result, err := vaultclient.New("https://"+e.vaultHost, vaultclient.WithHTTPClient(e.httpClient)).CreateAuthorization(
 		e.vaultID,
 		e.cshAuthKey,
 		&vault.AuthorizationsScope{
