@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httputil"
 
 	"github.com/hyperledger/aries-framework-go/pkg/common/log"
 )
@@ -166,4 +167,40 @@ func WithParsedResponse(r interface{}) Opt {
 	return func(o *options) {
 		o.parsedResponse = r
 	}
+}
+
+// WrapWithDumpTransport wraps existing http.Client's transport with transport that dumps requests and responses.
+func WrapWithDumpTransport(client *http.Client) *http.Client {
+	client.Transport = &DumpTransport{r: client.Transport}
+
+	return client
+}
+
+// DumpTransport is http.RoundTripper that dumps requests and responses.
+type DumpTransport struct {
+	r http.RoundTripper
+}
+
+// RoundTrip implements the RoundTripper interface.
+func (d *DumpTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	reqDump, err := httputil.DumpRequest(req, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to dump request: %w", err)
+	}
+
+	fmt.Printf("\n****REQUEST****\n%s\n\n", string(reqDump))
+
+	resp, err := d.r.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+
+	respDump, err := httputil.DumpResponse(resp, true)
+	if err != nil {
+		return nil, fmt.Errorf("failed to dump response: %w", err)
+	}
+
+	fmt.Printf("****RESPONSE****\n%s****************\n", string(respDump))
+
+	return resp, err
 }

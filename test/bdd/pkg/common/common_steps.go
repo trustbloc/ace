@@ -48,6 +48,10 @@ func NewSteps(tlsConfig *tls.Config) (*Steps, error) {
 		},
 	}
 
+	if os.Getenv("HTTP_CLIENT_TRACE_ON") == "true" {
+		httpClient = httputil.WrapWithDumpTransport(httpClient)
+	}
+
 	vdr, err := vdrutil.CreateVDR(httpClient)
 	if err != nil {
 		return nil, err
