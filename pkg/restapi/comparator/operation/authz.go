@@ -162,6 +162,10 @@ func (s *ed25519Signer) Sign(data []byte) ([]byte, error) {
 	return ed25519.Sign(s.key, data), nil
 }
 
+func (s *ed25519Signer) Alg() string {
+	return ""
+}
+
 func toZCaveats(caveats []models.Caveat) []zcapld.Caveat {
 	zCaveats := make([]zcapld.Caveat, len(caveats))
 

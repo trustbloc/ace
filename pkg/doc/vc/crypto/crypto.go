@@ -100,6 +100,10 @@ func (s *kmsSigner) Sign(data []byte) ([]byte, error) {
 	return v, nil
 }
 
+func (s *kmsSigner) Alg() string {
+	return ""
+}
+
 func (s *kmsSigner) textToLines(txt string) [][]byte {
 	lines := strings.Split(txt, "\n")
 	linesBytes := make([][]byte, 0, len(lines))
