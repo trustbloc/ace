@@ -823,3 +823,7 @@ func newSigner(cr ariescrypto.Crypto, kh interface{}) *signer {
 func (s *signer) Sign(data []byte) ([]byte, error) {
 	return s.crypto.Sign(data, s.kh)
 }
+
+func (s *signer) Alg() string {
+	return ""
+}

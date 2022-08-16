@@ -562,3 +562,7 @@ type signer struct {
 func (s *signer) Sign(data []byte) ([]byte, error) {
 	return s.c.Sign(data, s.kh)
 }
+
+func (s *signer) Alg() string {
+	return ""
+}
