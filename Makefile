@@ -116,7 +116,8 @@ open-api-spec:
 	@GOBIN=$(GOBIN_PATH) go install github.com/go-swagger/go-swagger/cmd/swagger@$(SWAGGER_VERSION)
 	@echo "Generating Open API spec"
 	@mkdir $(SWAGGER_DIR)
-	@$(GOBIN_PATH)/swagger generate spec -w ./cmd/gatekeeper -x github.com/trustbloc/orb -x github.com/trustbloc/ace/pkg/client/comparator -x github.com/trustbloc/ace/pkg/client/csh -o $(SWAGGER_OUTPUT)
+	@$(GOBIN_PATH)/swagger generate spec -w ./cmd/gatekeeper -x github.com/trustbloc/orb -x github.com/trustbloc/vct \
+		-x github.com/trustbloc/ace/pkg/restapi/vault -x github.com/trustbloc/ace/pkg/client -o $(SWAGGER_OUTPUT)
 	@echo "Validating generated spec"
 	@$(GOBIN_PATH)/swagger validate $(SWAGGER_OUTPUT)
 

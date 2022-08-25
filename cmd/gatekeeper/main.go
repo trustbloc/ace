@@ -4,7 +4,10 @@ Copyright SecureKey Technologies Inc. All Rights Reserved.
 SPDX-License-Identifier: Apache-2.0
 */
 
-// Package Gatekeeper REST API.
+// Package main Gatekeeper REST API.
+//
+// Gatekeeper helps to ensure that there are multiple authorizations for accessing protected data under
+// the given policy.
 //
 //     Schemes: http, https
 //     Version: 0.1.0
