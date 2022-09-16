@@ -61,10 +61,12 @@ unit-test: mocks
 bdd-test: generate-test-keys gatekeeper-docker comparator-rest-docker vault-server-docker confidential-storage-hub-docker
 	@cd test/bdd && GATEKEEPER_HOST=localhost:9014 ORB_DOMAIN=testnet.orb.local go test -count=1 -v -cover . -p 1 -timeout=10m -race
 
+# TODO (#68): frapsoft/openssl only has an amd64 version. While this does work under amd64 and arm64 Mac OS currently,
+#               we should add an arm64 version for systems that can only run arm64 code.
 .PHONY: generate-test-keys
 generate-test-keys:
 	@mkdir -p ./test/bdd/fixtures/keys/tls
-	@docker run -i --rm \
+	@docker run -i --platform linux/amd64 --rm \
 		-v $(abspath .):/opt/workspace/ace \
 		--entrypoint "/opt/workspace/ace/scripts/generate_test_keys.sh" \
 		frapsoft/openssl
